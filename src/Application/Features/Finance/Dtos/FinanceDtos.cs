@@ -1,4 +1,3 @@
-using AutoGallerySaaS.Application.Features.Auth.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
 
 namespace AutoGallerySaaS.Application.Features.Finance.Dtos;
@@ -9,7 +8,10 @@ public record TransactionDto(
     decimal Amount,
     DateTime TransactionDate,
     string Description,
-    PaymentMethod PaymentMethod
+    PaymentMethod PaymentMethod,
+    Guid? CategoryId,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType
 );
 
 public record CreateTransactionRequest(
@@ -18,5 +20,7 @@ public record CreateTransactionRequest(
     DateTime TransactionDate,
     string Description,
     PaymentMethod PaymentMethod,
-    Guid? CategoryId
+    Guid? CategoryId,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType
 );

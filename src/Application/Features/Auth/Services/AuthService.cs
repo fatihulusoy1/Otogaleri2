@@ -1,10 +1,7 @@
 using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Auth.Dtos;
-using AutoGallerySaaS.Application.Features.Auth.Dtos;
-using AutoGallerySaaS.Application.Features.Auth.Services;
 using AutoGallerySaaS.Domain.Entities.Identity;
 using AutoGallerySaaS.Domain.Entities.SaaS;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace AutoGallerySaaS.Application.Features.Auth.Services;
@@ -23,22 +20,37 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users
-            .IgnoreQueryFilters() // Login should look across all tenants if needed, but usually limited by email
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == request.Email);
 
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user == null || user.IsDeleted || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             throw new Exception("Invalid credentials");
         }
 
-        var roles = await _context.UserRoles
+        var tenant = await _context.Tenants
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == user.TenantId);
+
+        if (tenant == null || tenant.IsDeleted || !tenant.IsActive)
+        {
+            throw new Exception("Tenant is not active");
+        }
+
+        var userRoleRows = await _context.UserRoles
+            .IgnoreQueryFilters()
             .Where(ur => ur.UserId == user.Id)
-            .Select(ur => ur.Role.Name)
+            .Select(ur => new { ur.RoleId, RoleName = ur.Role.Name })
             .ToListAsync();
 
+        var roles = userRoleRows.Select(ur => ur.RoleName).Distinct().ToList();
+        var roleIds = userRoleRows.Select(ur => ur.RoleId).Distinct().ToList();
+
         var permissions = await _context.RolePermissions
-            .Where(rp => roles.Contains(rp.Role.Name))
+            .IgnoreQueryFilters()
+            .Where(rp => roleIds.Contains(rp.RoleId))
             .Select(rp => rp.Permission.Code)
+            .Distinct()
             .ToListAsync();
 
         var token = _jwtService.GenerateToken(user, roles, permissions);
@@ -48,23 +60,56 @@ public class AuthService : IAuthService
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
         await _context.SaveChangesAsync();
 
-        return new AuthResponse(token, refreshToken, DateTime.UtcNow.AddMinutes(60));
+        return CreateAuthResponse(user, tenant, token, refreshToken);
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        // 1. Create Tenant
+        var emailExists = await _context.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email == request.Email);
+
+        if (emailExists)
+        {
+            throw new Exception("Email is already registered");
+        }
+
         var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Name == "Free");
+        if (plan == null)
+        {
+            throw new Exception("Default subscription plan not found");
+        }
+
+        var tenantIdentifierBase = new string(request.TenantName
+            .Trim()
+            .ToLowerInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+            .ToArray())
+            .Trim('-');
+
+        if (string.IsNullOrWhiteSpace(tenantIdentifierBase))
+        {
+            tenantIdentifierBase = "tenant";
+        }
+
+        var tenantIdentifier = tenantIdentifierBase;
+        var suffix = 1;
+        while (await _context.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Identifier == tenantIdentifier))
+        {
+            tenantIdentifier = $"{tenantIdentifierBase}-{suffix++}";
+        }
+
         var tenant = new Tenant
         {
             Name = request.TenantName,
-            SubscriptionPlanId = plan?.Id ?? Guid.Empty,
-            SubscriptionEndDate = DateTime.UtcNow.AddDays(30)
+            Identifier = tenantIdentifier,
+            SubscriptionPlanId = plan.Id,
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(30),
+            IsActive = true
         };
         _context.Tenants.Add(tenant);
         await _context.SaveChangesAsync();
 
-        // 2. Create User
         var user = new User
         {
             Email = request.Email,
@@ -75,6 +120,37 @@ public class AuthService : IAuthService
             IsActive = true
         };
         _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        var adminRole = new Role
+        {
+            TenantId = tenant.Id,
+            Name = "TenantAdmin",
+            Description = "Tenant administrator",
+            IsStatic = true
+        };
+        _context.Roles.Add(adminRole);
+        await _context.SaveChangesAsync();
+
+        var allPermissionIds = await _context.Permissions
+            .IgnoreQueryFilters()
+            .Select(permission => permission.Id)
+            .ToListAsync();
+
+        _context.UserRoles.Add(new UserRole
+        {
+            TenantId = tenant.Id,
+            UserId = user.Id,
+            RoleId = adminRole.Id
+        });
+
+        _context.RolePermissions.AddRange(allPermissionIds.Select(permissionId => new RolePermission
+        {
+            TenantId = tenant.Id,
+            RoleId = adminRole.Id,
+            PermissionId = permissionId
+        }));
+
         await _context.SaveChangesAsync();
 
         return await LoginAsync(new LoginRequest(request.Email, request.Password));
@@ -91,14 +167,24 @@ public class AuthService : IAuthService
             throw new Exception("Invalid refresh token");
         }
 
-        var roles = await _context.UserRoles
+        var tenant = await _context.Tenants
+            .IgnoreQueryFilters()
+            .FirstAsync(t => t.Id == user.TenantId);
+
+        var userRoleRows = await _context.UserRoles
+            .IgnoreQueryFilters()
             .Where(ur => ur.UserId == user.Id)
-            .Select(ur => ur.Role.Name)
+            .Select(ur => new { ur.RoleId, RoleName = ur.Role.Name })
             .ToListAsync();
 
+        var roles = userRoleRows.Select(ur => ur.RoleName).Distinct().ToList();
+        var roleIds = userRoleRows.Select(ur => ur.RoleId).Distinct().ToList();
+
         var permissions = await _context.RolePermissions
-            .Where(rp => roles.Contains(rp.Role.Name))
+            .IgnoreQueryFilters()
+            .Where(rp => roleIds.Contains(rp.RoleId))
             .Select(rp => rp.Permission.Code)
+            .Distinct()
             .ToListAsync();
 
         var token = _jwtService.GenerateToken(user, roles, permissions);
@@ -108,6 +194,18 @@ public class AuthService : IAuthService
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
         await _context.SaveChangesAsync();
 
-        return new AuthResponse(token, newRefreshToken, DateTime.UtcNow.AddMinutes(60));
+        return CreateAuthResponse(user, tenant, token, newRefreshToken);
+    }
+
+    private static AuthResponse CreateAuthResponse(User user, Tenant tenant, string token, string refreshToken)
+    {
+        return new AuthResponse(
+            token,
+            refreshToken,
+            DateTime.UtcNow.AddMinutes(60),
+            tenant.Id,
+            tenant.Name,
+            $"{user.FirstName} {user.LastName}".Trim(),
+            user.IsSuperAdmin);
     }
 }

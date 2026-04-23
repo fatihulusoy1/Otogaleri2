@@ -41,6 +41,15 @@ public class CurrentUserService : ICurrentUserService
     }
 
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+
+    public bool IsSuperAdmin
+    {
+        get
+        {
+            var claimValue = _httpContextAccessor.HttpContext?.User?.FindFirstValue("is_super_admin");
+            return bool.TryParse(claimValue, out var isSuperAdmin) && isSuperAdmin;
+        }
+    }
 }
 
 public class DateTimeService : IDateTime

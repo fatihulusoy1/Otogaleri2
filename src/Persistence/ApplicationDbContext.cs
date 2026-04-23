@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Domain.Common;
 using AutoGallerySaaS.Domain.Entities.Crm;
@@ -6,9 +7,6 @@ using AutoGallerySaaS.Domain.Entities.Identity;
 using AutoGallerySaaS.Domain.Entities.SaaS;
 using AutoGallerySaaS.Domain.Entities.Vehicles;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
-
-using AutoGallerySaaS.Application.Common.Interfaces;
 
 namespace AutoGallerySaaS.Persistence;
 
@@ -50,42 +48,15 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
 
+    public Guid? CurrentTenantId => _tenantService.GetTenantId();
+    public bool CurrentUserIsSuperAdmin => _currentUserService.IsSuperAdmin;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Global Query Filters
-        var tenantId = _tenantService.GetTenantId();
-
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            if (typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
-            {
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var property = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
-                var filter = Expression.Lambda(Expression.Equal(property, Expression.Constant(tenantId ?? Guid.Empty)), parameter);
-
-                // This is simplified. Real world would handle null tenantId for superadmins etc.
-                // But per requirements: "Backend sorguları otomatik tenant filtresi ile çalışmalı."
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
-            }
-
-            if (typeof(ISoftDelete).IsAssignableFrom(entityType.ClrType))
-            {
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var property = Expression.Property(parameter, nameof(ISoftDelete.IsDeleted));
-                var filter = Expression.Lambda(Expression.Equal(property, Expression.Constant(false)), parameter);
-
-                // Combining filters is complex with Expressions, so we usually use a library or more robust approach.
-                // For this task, I'll stick to basic implementation or focus on TenantId as most critical.
-                // EF Core only supports one query filter per entity. So we need to combine them.
-            }
-        }
-
-        // Better way to handle combined filters:
         ConfigureGlobalFilters(modelBuilder);
 
-        // Identity Configuration
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         modelBuilder.Entity<Tenant>().HasIndex(t => t.Identifier).IsUnique();
     }
@@ -97,51 +68,58 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             var isTenantEntity = typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType);
             var isSoftDelete = typeof(ISoftDelete).IsAssignableFrom(entityType.ClrType);
 
-            if (isTenantEntity || isSoftDelete)
+            if (!isTenantEntity && !isSoftDelete)
             {
-                var method = typeof(ApplicationDbContext).GetMethod(nameof(GetFilterExpression), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                    ?.MakeGenericMethod(entityType.ClrType);
-
-                if (method != null)
-                {
-                    var filter = method.Invoke(this, null);
-                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter((LambdaExpression)filter!);
-                }
+                continue;
             }
+
+            var method = typeof(ApplicationDbContext)
+                .GetMethod(nameof(GetFilterExpression), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .MakeGenericMethod(entityType.ClrType);
+
+            if (method == null)
+            {
+                continue;
+            }
+
+            var filter = method.Invoke(this, null);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter((LambdaExpression)filter!);
         }
     }
 
     private Expression<Func<TEntity, bool>> GetFilterExpression<TEntity>() where TEntity : class
     {
-        Expression<Func<TEntity, bool>> expression = e => true;
+        Expression<Func<TEntity, bool>> expression = _ => true;
 
         if (typeof(ITenantEntity).IsAssignableFrom(typeof(TEntity)))
         {
-            var tenantId = _tenantService.GetTenantId();
-            Expression<Func<TEntity, bool>> tenantFilter = e => ((ITenantEntity)e).TenantId == (tenantId ?? Guid.Empty);
+            Expression<Func<TEntity, bool>> tenantFilter =
+                entity => CurrentUserIsSuperAdmin || ((ITenantEntity)entity).TenantId == (CurrentTenantId ?? Guid.Empty);
             expression = CombineExpressions(expression, tenantFilter);
         }
 
         if (typeof(ISoftDelete).IsAssignableFrom(typeof(TEntity)))
         {
-            Expression<Func<TEntity, bool>> softDeleteFilter = e => !((ISoftDelete)e).IsDeleted;
+            Expression<Func<TEntity, bool>> softDeleteFilter = entity => !((ISoftDelete)entity).IsDeleted;
             expression = CombineExpressions(expression, softDeleteFilter);
         }
 
         return expression;
     }
 
-    private Expression<Func<T, bool>> CombineExpressions<T>(Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)
+    private static Expression<Func<T, bool>> CombineExpressions<T>(
+        Expression<Func<T, bool>> leftExpression,
+        Expression<Func<T, bool>> rightExpression)
     {
         var parameter = Expression.Parameter(typeof(T));
 
-        var leftVisitor = new ReplaceExpressionVisitor(expr1.Parameters[0], parameter);
-        var left = leftVisitor.Visit(expr1.Body);
+        var leftVisitor = new ReplaceExpressionVisitor(leftExpression.Parameters[0], parameter);
+        var left = leftVisitor.Visit(leftExpression.Body);
 
-        var rightVisitor = new ReplaceExpressionVisitor(expr2.Parameters[0], parameter);
-        var right = rightVisitor.Visit(expr2.Body);
+        var rightVisitor = new ReplaceExpressionVisitor(rightExpression.Parameters[0], parameter);
+        var right = rightVisitor.Visit(rightExpression.Body);
 
-        return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left, right), parameter);
+        return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left!, right!), parameter);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -163,12 +141,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
         foreach (var entry in ChangeTracker.Entries<ITenantEntity>())
         {
-            if (entry.State == EntityState.Added)
+            if (entry.State == EntityState.Added && entry.Entity.TenantId == Guid.Empty)
             {
-                if (entry.Entity.TenantId == Guid.Empty)
-                {
-                    entry.Entity.TenantId = _tenantService.GetTenantId() ?? Guid.Empty;
-                }
+                entry.Entity.TenantId = _tenantService.GetTenantId() ?? Guid.Empty;
             }
         }
 
@@ -189,7 +164,11 @@ public class ReplaceExpressionVisitor : ExpressionVisitor
 
     public override Expression Visit(Expression? node)
     {
-        if (node == _oldValue) return _newValue;
+        if (node == _oldValue)
+        {
+            return _newValue;
+        }
+
         return base.Visit(node)!;
     }
 }

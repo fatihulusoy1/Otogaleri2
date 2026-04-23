@@ -13,6 +13,7 @@ public interface ICurrentUserService
     string? UserId { get; }
     Guid? TenantId { get; }
     bool IsAuthenticated { get; }
+    bool IsSuperAdmin { get; }
 }
 
 public interface IDateTime

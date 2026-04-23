@@ -1,8 +1,6 @@
 using AutoGallerySaaS.Application.Common.Interfaces;
-using AutoGallerySaaS.Application.Features.Auth.Dtos;
 using AutoGallerySaaS.Application.Features.Finance.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace AutoGallerySaaS.Application.Features.Finance.Services;
@@ -19,26 +17,51 @@ public class FinanceService : IFinanceService
     public async Task<List<TransactionDto>> GetTransactionsAsync()
     {
         return await _context.Transactions
-            .OrderByDescending(t => t.TransactionDate)
-            .Select(t => new TransactionDto(t.Id, t.Type, t.Amount, t.TransactionDate, t.Description, t.PaymentMethod))
+            .OrderByDescending(transaction => transaction.TransactionDate)
+            .Select(transaction => new TransactionDto(
+                transaction.Id,
+                transaction.Type,
+                transaction.Amount,
+                transaction.TransactionDate,
+                transaction.Description,
+                transaction.PaymentMethod,
+                transaction.CategoryId,
+                transaction.RelatedEntityId,
+                transaction.RelatedEntityType))
             .ToListAsync();
     }
 
     public async Task<TransactionDto> CreateTransactionAsync(CreateTransactionRequest request)
     {
+        if (request.Amount <= 0)
+        {
+            throw new Exception("Transaction amount must be greater than zero");
+        }
+
         var transaction = new Transaction
         {
             Type = request.Type,
             Amount = request.Amount,
             TransactionDate = request.TransactionDate,
-            Description = request.Description,
+            Description = request.Description.Trim(),
             PaymentMethod = request.PaymentMethod,
-            CategoryId = request.CategoryId
+            CategoryId = request.CategoryId,
+            RelatedEntityId = request.RelatedEntityId,
+            RelatedEntityType = request.RelatedEntityType
         };
 
         _context.Transactions.Add(transaction);
         await _context.SaveChangesAsync();
 
-        return new TransactionDto(transaction.Id, transaction.Type, transaction.Amount, transaction.TransactionDate, transaction.Description, transaction.PaymentMethod);
+        return new TransactionDto(
+            transaction.Id,
+            transaction.Type,
+            transaction.Amount,
+            transaction.TransactionDate,
+            transaction.Description,
+            transaction.PaymentMethod,
+            transaction.CategoryId,
+            transaction.RelatedEntityId,
+            transaction.RelatedEntityType);
     }
 }
