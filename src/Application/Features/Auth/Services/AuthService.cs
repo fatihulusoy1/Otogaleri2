@@ -11,6 +11,9 @@ namespace AutoGallerySaaS.Application.Features.Auth.Services;
 
 public class AuthService : IAuthService
 {
+    // Yeni kayitlar icin ucretsiz deneme suresi (Pro plan limitleriyle baslar).
+    private const int TrialDays = 14;
+
     private readonly IApplicationDbContext _context;
     private readonly IJwtService _jwtService;
 
@@ -39,6 +42,8 @@ public class AuthService : IAuthService
         {
             throw new UnauthorizedException("Tenant is not active");
         }
+
+        EnsureSubscriptionActive(user, tenant);
 
         var userRoleRows = await _context.UserRoles
             .IgnoreQueryFilters()
@@ -77,7 +82,9 @@ public class AuthService : IAuthService
             throw new BusinessRuleException("Email is already registered");
         }
 
-        var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Name == "Free");
+        // Deneme suresi Pro plan limitleriyle baslar; Pro yoksa mevcut bir plana geriye dusulur.
+        var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Name == "Pro")
+            ?? await _context.SubscriptionPlans.FirstOrDefaultAsync();
         if (plan == null)
         {
             throw new Exception("Default subscription plan not found");
@@ -107,7 +114,8 @@ public class AuthService : IAuthService
             Name = request.TenantName,
             Identifier = tenantIdentifier,
             SubscriptionPlanId = plan.Id,
-            SubscriptionEndDate = DateTime.UtcNow.AddDays(30),
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(TrialDays),
+            IsTrial = true,
             IsActive = true
         };
         _context.Tenants.Add(tenant);
@@ -174,6 +182,8 @@ public class AuthService : IAuthService
             .IgnoreQueryFilters()
             .FirstAsync(t => t.Id == user.TenantId);
 
+        EnsureSubscriptionActive(user, tenant);
+
         var userRoleRows = await _context.UserRoles
             .IgnoreQueryFilters()
             .Where(ur => ur.UserId == user.Id)
@@ -198,6 +208,25 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         return CreateAuthResponse(user, tenant, token, newRefreshToken);
+    }
+
+    /// <summary>
+    /// Abonelik/deneme suresi dolan tenant'larin oturum acmasini engeller. Super admin haricidir.
+    /// </summary>
+    private static void EnsureSubscriptionActive(User user, Tenant tenant)
+    {
+        if (user.IsSuperAdmin)
+        {
+            return;
+        }
+
+        if (tenant.SubscriptionEndDate < DateTime.UtcNow)
+        {
+            var message = tenant.IsTrial
+                ? "Ucretsiz deneme sureniz sona erdi. Devam etmek icin bir plan secmelisiniz."
+                : "Aboneliginizin suresi doldu. Devam etmek icin aboneliginizi yenilemelisiniz.";
+            throw new SubscriptionException(message);
+        }
     }
 
     private static AuthResponse CreateAuthResponse(User user, Tenant tenant, string token, string refreshToken)

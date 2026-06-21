@@ -1,6 +1,7 @@
 using AutoGallerySaaS.Application.Common;
 using AutoGallerySaaS.Application.Common.Exceptions;
 using AutoGallerySaaS.Application.Common.Interfaces;
+using AutoGallerySaaS.Application.Features.Subscriptions.Services;
 using AutoGallerySaaS.Application.Features.Vehicles.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
 using AutoGallerySaaS.Domain.Entities.Vehicles;
@@ -11,11 +12,13 @@ namespace AutoGallerySaaS.Application.Features.Vehicles.Services;
 public class VehicleService : IVehicleService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ISubscriptionService _subscriptionService;
     private static readonly Guid SharedLookupTenantId = SharedTenantIds.Catalog;
 
-    public VehicleService(IApplicationDbContext context)
+    public VehicleService(IApplicationDbContext context, ISubscriptionService subscriptionService)
     {
         _context = context;
+        _subscriptionService = subscriptionService;
     }
 
     public async Task<VehicleLookupsDto> GetLookupsAsync()
@@ -143,6 +146,7 @@ public class VehicleService : IVehicleService
         string? description)
     {
         ValidateVehicleRequest(plate, segmentId, brandId, modelId, purchasePrice);
+        await _subscriptionService.EnsureCanAddVehicleAsync();
         var catalog = await ResolveCatalogAsync(segmentId, brandId, modelId);
 
         var vehicle = new Vehicle

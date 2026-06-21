@@ -34,12 +34,13 @@ public class ExceptionMiddleware
                 UnauthorizedException => (int)HttpStatusCode.Unauthorized,
                 NotFoundException => (int)HttpStatusCode.NotFound,
                 BusinessRuleException => (int)HttpStatusCode.Conflict,
+                SubscriptionException => (int)HttpStatusCode.PaymentRequired,
                 _ => (int)HttpStatusCode.InternalServerError
             };
 
             var response = ex switch
             {
-                ValidationException or UnauthorizedException or NotFoundException or BusinessRuleException => new ProblemDetails
+                ValidationException or UnauthorizedException or NotFoundException or BusinessRuleException or SubscriptionException => new ProblemDetails
                 {
                     Status = context.Response.StatusCode,
                     Title = ex.Message

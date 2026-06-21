@@ -2,6 +2,7 @@ using AutoGallerySaaS.Application.Common;
 using AutoGallerySaaS.Application.Common.Exceptions;
 using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Consignments.Dtos;
+using AutoGallerySaaS.Application.Features.Subscriptions.Services;
 using AutoGallerySaaS.Domain.Entities.Finance;
 using AutoGallerySaaS.Domain.Entities.Vehicles;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,13 @@ namespace AutoGallerySaaS.Application.Features.Consignments.Services;
 public class ConsignmentService : IConsignmentService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ISubscriptionService _subscriptionService;
     private static readonly Guid SharedLookupTenantId = SharedTenantIds.Catalog;
 
-    public ConsignmentService(IApplicationDbContext context)
+    public ConsignmentService(IApplicationDbContext context, ISubscriptionService subscriptionService)
     {
         _context = context;
+        _subscriptionService = subscriptionService;
     }
 
     public async Task<List<BrokeredConsignmentDto>> GetBrokeredAsync()
@@ -188,6 +191,9 @@ public class ConsignmentService : IConsignmentService
         {
             throw new BusinessRuleException("Konsinye baz tutar sifirdan buyuk olmalidir.");
         }
+
+        // Stok konsinye, stoga bir arac ekledigi icin plan limitine tabidir.
+        await _subscriptionService.EnsureCanAddVehicleAsync();
 
         var catalog = await ResolveCatalogAsync(request.SegmentId, request.BrandId, request.ModelId);
 

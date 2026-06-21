@@ -11,6 +11,7 @@ public class Tenant : AuditableEntity, ISoftDelete
     public Guid SubscriptionPlanId { get; set; }
     public SubscriptionPlan SubscriptionPlan { get; set; } = null!;
     public DateTime SubscriptionEndDate { get; set; }
+    public bool IsTrial { get; set; } // Ucretsiz deneme surecindeyse true; abonelik baslayinca false yapilir.
 
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }

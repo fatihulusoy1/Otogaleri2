@@ -386,6 +386,9 @@ public static class DbInitializer
         await context.Database.ExecuteSqlRawAsync("""
             ALTER TABLE IF EXISTS "ReceivablePayables" ADD COLUMN IF NOT EXISTS "LastSettlementDate" timestamp with time zone NULL;
             """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Tenants" ADD COLUMN IF NOT EXISTS "IsTrial" boolean NOT NULL DEFAULT FALSE;
+            """);
     }
 
     private static async Task NormalizeSharedLookupDataAsync(ApplicationDbContext context)
