@@ -143,7 +143,7 @@ export function AdminTenantsPage() {
   }
 
   return (
-    <section className="page-stack">
+    <section className="page-stack tenant-admin">
       <PageHeader
         eyebrow="Super Admin"
         title="Tenant ve abonelik yönetimi"
@@ -189,7 +189,7 @@ export function AdminTenantsPage() {
                 </div>
 
                 {editingTenantId === tenant.id ? (
-                  <div className="panel inline-editor">
+                  <div className="inline-editor">
                     <label>
                       <span>Plan</span>
                       <select
@@ -262,7 +262,7 @@ export function AdminTenantsPage() {
           ))}
         </div>
 
-        <div className="panel inline-editor">
+        <div className="inline-editor">
           <h3>{editingPlanId ? "Planı düzenle" : "Yeni plan"}</h3>
           <div className="form-grid">
             <label>

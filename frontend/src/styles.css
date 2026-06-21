@@ -2015,3 +2015,103 @@ textarea:focus {
     gap: 2px;
   }
 }
+
+/* Super admin: tenant ve abonelik yonetimi ekrani */
+.tenant-admin .record-card.spacious {
+  gap: 14px;
+  align-content: start;
+}
+
+.tenant-admin .record-grid {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 12px;
+}
+
+.tenant-admin .record-grid div {
+  padding: 12px 14px;
+}
+
+.tenant-admin .record-grid span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tenant-admin .badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: rgba(20, 83, 45, 0.12);
+  color: var(--primary);
+}
+
+.tenant-admin .button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.tenant-admin .button-row .primary-button,
+.tenant-admin .button-row .ghost-button {
+  padding: 10px 16px;
+  font-size: 0.92rem;
+}
+
+/* ghost-button varsayilani koyu sidebar icin beyaz; acik panelde koyu varyant */
+.tenant-admin .button-row .ghost-button {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--heading);
+}
+
+.tenant-admin .button-row .ghost-button.danger {
+  background: rgba(180, 35, 24, 0.12);
+  color: var(--danger);
+}
+
+.tenant-admin .inline-editor {
+  margin-top: 6px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.92);
+  display: grid;
+  gap: 14px;
+}
+
+.tenant-admin .inline-editor h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--heading);
+}
+
+.tenant-admin .inline-editor .form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.tenant-admin .inline-editor label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.tenant-admin .inline-editor .checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tenant-admin .inline-editor .checkbox-row input {
+  width: auto;
+  margin: 0;
+}
