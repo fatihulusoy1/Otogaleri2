@@ -10,6 +10,11 @@ public interface IAdminService
     Task<List<AdminUserDto>> GetUsersAsync(Guid? tenantId = null);
     Task UpdateTenantStatusAsync(Guid tenantId, bool isActive);
     Task UpdateUserStatusAsync(Guid userId, bool isActive);
+    Task UpdateTenantSubscriptionAsync(Guid tenantId, UpdateTenantSubscriptionRequest request);
+    Task DeleteTenantAsync(Guid tenantId);
+    Task<List<AdminSubscriptionPlanDto>> GetPlansAsync();
+    Task<AdminSubscriptionPlanDto> CreatePlanAsync(SaveSubscriptionPlanRequest request);
+    Task<AdminSubscriptionPlanDto> UpdatePlanAsync(Guid id, SaveSubscriptionPlanRequest request);
     Task<AdminCatalogLookupsDto> GetCatalogAsync();
     Task<AdminLookupDto> CreateSegmentAsync(CreateAdminSegmentRequest request);
     Task<AdminLookupDto> UpdateSegmentAsync(Guid id, UpdateNameRequest request);

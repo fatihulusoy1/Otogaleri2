@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using AutoGallerySaaS.Application.Features.Auth.Services;
 using AutoGallerySaaS.Domain.Entities.Identity;
 using FluentAssertions;
@@ -36,5 +37,32 @@ public class JwtServiceTests
 
         // Assert
         result.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldEmbedTenantSuperAdminRoleAndPermissionClaims()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "admin@test.com",
+            TenantId = tenantId,
+            IsSuperAdmin = true
+        };
+        var roles = new List<string> { "TenantAdmin" };
+        var permissions = new List<string> { "Vehicles.View", "Finance.Manage" };
+
+        // Act
+        var token = _sut.GenerateToken(user, roles, permissions);
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+        // Assert
+        jwt.Claims.Should().Contain(c => c.Type == "tenant_id" && c.Value == tenantId.ToString());
+        // is_super_admin claim'i policy ile uyumlu olmali (RequireClaim bool.TrueString => "True").
+        jwt.Claims.Should().Contain(c => c.Type == "is_super_admin" && c.Value == bool.TrueString);
+        jwt.Claims.Should().Contain(c => c.Type == "permission" && c.Value == "Vehicles.View");
+        jwt.Claims.Should().Contain(c => c.Type == "permission" && c.Value == "Finance.Manage");
     }
 }

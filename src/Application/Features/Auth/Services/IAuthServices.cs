@@ -1,5 +1,4 @@
 using AutoGallerySaaS.Application.Features.Auth.Dtos;
-using AutoGallerySaaS.Application.Features.Auth.Dtos;
 using AutoGallerySaaS.Domain.Entities.Identity;
 
 namespace AutoGallerySaaS.Application.Features.Auth.Services;

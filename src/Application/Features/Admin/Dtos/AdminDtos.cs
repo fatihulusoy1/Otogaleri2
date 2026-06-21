@@ -7,7 +7,40 @@ public record AdminTenantDto(
     string Name,
     string? Identifier,
     bool IsActive,
-    int UserCount
+    int UserCount,
+    int VehicleCount,
+    Guid SubscriptionPlanId,
+    string? SubscriptionPlanName,
+    DateTime SubscriptionEndDate,
+    bool IsTrial,
+    DateTime CreatedAt
+);
+
+public record AdminSubscriptionPlanDto(
+    Guid Id,
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    decimal YearlyPrice,
+    int MaxUsers,
+    int MaxVehicles,
+    bool IsActive
+);
+
+public record UpdateTenantSubscriptionRequest(
+    Guid SubscriptionPlanId,
+    DateTime SubscriptionEndDate,
+    bool IsTrial
+);
+
+public record SaveSubscriptionPlanRequest(
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    decimal YearlyPrice,
+    int MaxUsers,
+    int MaxVehicles,
+    bool IsActive
 );
 
 public record AdminUserDto(

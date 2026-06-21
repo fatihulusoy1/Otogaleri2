@@ -19,6 +19,11 @@ export interface RegisterRequest extends LoginRequest {
   tenantName: string;
 }
 
+export interface RefreshTokenRequest {
+  token: string;
+  refreshToken: string;
+}
+
 export interface DashboardSummary {
   totalVehicles: number;
   inStockVehicles: number;
@@ -256,6 +261,39 @@ export interface AdminTenant {
   identifier: string | null;
   isActive: boolean;
   userCount: number;
+  vehicleCount: number;
+  subscriptionPlanId: string;
+  subscriptionPlanName: string | null;
+  subscriptionEndDate: string;
+  isTrial: boolean;
+  createdAt: string;
+}
+
+export interface AdminSubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+  isActive: boolean;
+}
+
+export interface SaveSubscriptionPlanRequest {
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+  isActive: boolean;
+}
+
+export interface UpdateTenantSubscriptionRequest {
+  subscriptionPlanId: string;
+  subscriptionEndDate: string;
+  isTrial: boolean;
 }
 
 export interface AdminUser {

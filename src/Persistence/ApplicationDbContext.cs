@@ -198,6 +198,15 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             }
         }
 
+        foreach (var entry in ChangeTracker.Entries<ISoftDelete>())
+        {
+            if (entry.State == EntityState.Modified && entry.Entity.IsDeleted && entry.Entity.DeletedAt == null)
+            {
+                entry.Entity.DeletedAt = _dateTime.Now;
+                entry.Entity.DeletedBy = _currentUserService.UserId;
+            }
+        }
+
         return base.SaveChangesAsync(cancellationToken);
     }
 }
