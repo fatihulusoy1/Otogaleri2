@@ -21,6 +21,7 @@ import type {
   VehicleLookups,
   PurchaseRecord,
   RegisterRequest,
+  RefreshTokenRequest,
   UpdateBrokeredConsignmentRequest,
   Vehicle,
   VehicleExpense,
@@ -85,6 +86,12 @@ export const api = {
   },
   register(payload: RegisterRequest) {
     return request<AuthResponse>("/api/Auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+  refreshToken(payload: RefreshTokenRequest) {
+    return request<AuthResponse>("/api/Auth/refresh-token", {
       method: "POST",
       body: JSON.stringify(payload)
     });

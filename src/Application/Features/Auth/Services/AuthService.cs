@@ -1,3 +1,4 @@
+using AutoGallerySaaS.Application.Common.Exceptions;
 using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Auth.Dtos;
 using AutoGallerySaaS.Domain.Entities.Identity;
@@ -27,7 +28,7 @@ public class AuthService : IAuthService
 
         if (user == null || user.IsDeleted || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            throw new Exception("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
         }
 
         var tenant = await _context.Tenants
@@ -36,7 +37,7 @@ public class AuthService : IAuthService
 
         if (tenant == null || tenant.IsDeleted || !tenant.IsActive)
         {
-            throw new Exception("Tenant is not active");
+            throw new UnauthorizedException("Tenant is not active");
         }
 
         var userRoleRows = await _context.UserRoles
@@ -73,7 +74,7 @@ public class AuthService : IAuthService
 
         if (emailExists)
         {
-            throw new Exception("Email is already registered");
+            throw new BusinessRuleException("Email is already registered");
         }
 
         var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Name == "Free");
@@ -166,7 +167,7 @@ public class AuthService : IAuthService
 
         if (user == null || user.RefreshTokenExpiryTime < DateTime.UtcNow)
         {
-            throw new Exception("Invalid refresh token");
+            throw new UnauthorizedException("Invalid refresh token");
         }
 
         var tenant = await _context.Tenants

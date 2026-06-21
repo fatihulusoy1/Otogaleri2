@@ -1,4 +1,5 @@
 using AutoGallerySaaS.Application.Common;
+using AutoGallerySaaS.Application.Common.Exceptions;
 using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Admin.Dtos;
 using AutoGallerySaaS.Application.Features.Finance.Dtos;
@@ -69,7 +70,7 @@ public class AdminService : IAdminService
         var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(item => item.Id == tenantId);
         if (tenant == null)
         {
-            throw new Exception("Tenant not found");
+            throw new NotFoundException("Tenant not found");
         }
 
         tenant.IsActive = isActive;
@@ -81,7 +82,7 @@ public class AdminService : IAdminService
         var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(item => item.Id == userId);
         if (user == null)
         {
-            throw new Exception("User not found");
+            throw new NotFoundException("User not found");
         }
 
         user.IsActive = isActive;
@@ -121,14 +122,23 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Segment name is required");
+            throw new ValidationException("Segment name is required");
         }
 
-        var exists = await _context.VehicleSegments.IgnoreQueryFilters()
-            .AnyAsync(item => item.TenantId == SharedLookupTenantId && !item.IsDeleted && item.Name == name);
-        if (exists)
+        var existing = await _context.VehicleSegments.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == SharedLookupTenantId && item.Name == name);
+        if (existing != null)
         {
-            throw new Exception("Segment already exists");
+            if (!existing.IsDeleted)
+            {
+                throw new BusinessRuleException("Segment already exists");
+            }
+
+            existing.IsDeleted = false;
+            existing.DeletedAt = null;
+            existing.DeletedBy = null;
+            await _context.SaveChangesAsync();
+            return new AdminLookupDto(existing.Id, existing.Name);
         }
 
         var segment = new VehicleSegment
@@ -147,13 +157,13 @@ public class AdminService : IAdminService
             .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (segment == null)
         {
-            throw new Exception("Segment not found");
+            throw new NotFoundException("Segment not found");
         }
 
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Segment name is required");
+            throw new ValidationException("Segment name is required");
         }
 
         segment.Name = name;
@@ -179,14 +189,23 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Brand name is required");
+            throw new ValidationException("Brand name is required");
         }
 
-        var exists = await _context.VehicleBrands.IgnoreQueryFilters()
-            .AnyAsync(item => item.TenantId == SharedLookupTenantId && !item.IsDeleted && item.Name == name);
-        if (exists)
+        var existing = await _context.VehicleBrands.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == SharedLookupTenantId && item.Name == name);
+        if (existing != null)
         {
-            throw new Exception("Brand already exists");
+            if (!existing.IsDeleted)
+            {
+                throw new BusinessRuleException("Brand already exists");
+            }
+
+            existing.IsDeleted = false;
+            existing.DeletedAt = null;
+            existing.DeletedBy = null;
+            await _context.SaveChangesAsync();
+            return new AdminLookupDto(existing.Id, existing.Name);
         }
 
         var brand = new VehicleBrand
@@ -205,13 +224,13 @@ public class AdminService : IAdminService
             .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (brand == null)
         {
-            throw new Exception("Brand not found");
+            throw new NotFoundException("Brand not found");
         }
 
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Brand name is required");
+            throw new ValidationException("Brand name is required");
         }
 
         brand.Name = name;
@@ -237,14 +256,14 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Model name is required");
+            throw new ValidationException("Model name is required");
         }
 
         var brand = await _context.VehicleBrands.IgnoreQueryFilters()
             .FirstOrDefaultAsync(item => item.Id == request.BrandId && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (brand == null)
         {
-            throw new Exception("Brand not found");
+            throw new NotFoundException("Brand not found");
         }
 
         if (request.SegmentId.HasValue)
@@ -253,20 +272,28 @@ public class AdminService : IAdminService
                 .AnyAsync(item => item.Id == request.SegmentId.Value && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
             if (!segmentExists)
             {
-                throw new Exception("Segment not found");
+                throw new NotFoundException("Segment not found");
             }
         }
 
-        var exists = await _context.VehicleCatalogModels.IgnoreQueryFilters()
-            .AnyAsync(item =>
+        var existing = await _context.VehicleCatalogModels.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item =>
                 item.TenantId == SharedLookupTenantId &&
-                !item.IsDeleted &&
                 item.VehicleBrandId == request.BrandId &&
                 item.VehicleSegmentId == request.SegmentId &&
                 item.Name == name);
-        if (exists)
+        if (existing != null)
         {
-            throw new Exception("Model already exists");
+            if (!existing.IsDeleted)
+            {
+                throw new BusinessRuleException("Model already exists");
+            }
+
+            existing.IsDeleted = false;
+            existing.DeletedAt = null;
+            existing.DeletedBy = null;
+            await _context.SaveChangesAsync();
+            return new AdminCatalogModelDto(existing.Id, existing.Name, existing.VehicleBrandId, existing.VehicleSegmentId);
         }
 
         var model = new VehicleCatalogModel
@@ -288,7 +315,7 @@ public class AdminService : IAdminService
             .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (model == null)
         {
-            throw new Exception("Model not found");
+            throw new NotFoundException("Model not found");
         }
 
         var updated = await CreateOrValidateModelPayloadAsync(request);
@@ -357,7 +384,7 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Expense category name is required");
+            throw new ValidationException("Expense category name is required");
         }
 
         if (request.CategoryType == ExpenseCategoryType.General)
@@ -369,7 +396,7 @@ public class AdminService : IAdminService
             {
                 if (!existingCategory.IsDeleted)
                 {
-                    throw new Exception("Expense category already exists");
+                    throw new BusinessRuleException("Expense category already exists");
                 }
 
                 existingCategory.IsDeleted = false;
@@ -396,7 +423,7 @@ public class AdminService : IAdminService
         {
             if (!existingVehicleCategory.IsDeleted)
             {
-                throw new Exception("Expense category already exists");
+                throw new BusinessRuleException("Expense category already exists");
             }
 
             existingVehicleCategory.IsDeleted = false;
@@ -422,7 +449,7 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Expense category name is required");
+            throw new ValidationException("Expense category name is required");
         }
 
         var vehicleCategory = await _context.VehicleExpenseCategories.IgnoreQueryFilters()
@@ -435,7 +462,7 @@ public class AdminService : IAdminService
             {
                 if (!conflicting.IsDeleted)
                 {
-                    throw new Exception("Expense category already exists");
+                    throw new BusinessRuleException("Expense category already exists");
                 }
 
                 conflicting.IsDeleted = false;
@@ -455,7 +482,7 @@ public class AdminService : IAdminService
             .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (generalCategory == null)
         {
-            throw new Exception("Expense category not found");
+            throw new NotFoundException("Expense category not found");
         }
 
         var generalConflicting = await _context.GeneralExpenseCategories.IgnoreQueryFilters()
@@ -464,7 +491,7 @@ public class AdminService : IAdminService
         {
             if (!generalConflicting.IsDeleted)
             {
-                throw new Exception("Expense category already exists");
+                throw new BusinessRuleException("Expense category already exists");
             }
 
             generalConflicting.IsDeleted = false;
@@ -547,14 +574,14 @@ public class AdminService : IAdminService
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new Exception("Model name is required");
+            throw new ValidationException("Model name is required");
         }
 
         var brand = await _context.VehicleBrands.IgnoreQueryFilters()
             .FirstOrDefaultAsync(item => item.Id == request.BrandId && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
         if (brand == null)
         {
-            throw new Exception("Brand not found");
+            throw new NotFoundException("Brand not found");
         }
 
         if (request.SegmentId.HasValue)
@@ -563,7 +590,7 @@ public class AdminService : IAdminService
                 .AnyAsync(item => item.Id == request.SegmentId.Value && item.TenantId == SharedLookupTenantId && !item.IsDeleted);
             if (!segmentExists)
             {
-                throw new Exception("Segment not found");
+                throw new NotFoundException("Segment not found");
             }
         }
 

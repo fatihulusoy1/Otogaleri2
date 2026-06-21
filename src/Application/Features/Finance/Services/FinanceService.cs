@@ -109,7 +109,7 @@ public class FinanceService : IFinanceService
             Type = request.Type,
             Amount = request.Amount,
             TransactionDate = request.TransactionDate,
-            Description = request.Description.Trim(),
+            Description = request.Description?.Trim() ?? string.Empty,
             PaymentMethod = request.PaymentMethod,
             CategoryId = request.CategoryId,
             RelatedEntityId = request.RelatedEntityId,
@@ -145,7 +145,7 @@ public class FinanceService : IFinanceService
         transaction.Type = request.Type;
         transaction.Amount = request.Amount;
         transaction.TransactionDate = request.TransactionDate;
-        transaction.Description = request.Description.Trim();
+        transaction.Description = request.Description?.Trim() ?? string.Empty;
         transaction.PaymentMethod = request.PaymentMethod;
         transaction.CategoryId = request.CategoryId;
         transaction.RelatedEntityId = request.RelatedEntityId;
@@ -234,7 +234,7 @@ public class FinanceService : IFinanceService
     {
         if (amount <= 0)
         {
-            throw new BusinessRuleException("Tahsil edilen / odenen tutar sifirdan buyuk olmalidir.");
+            throw new ValidationException("Tahsil edilen / odenen tutar sifirdan buyuk olmalidir.");
         }
 
         var item = await GetAccessibleReceivablePayableAsync(id);
@@ -245,7 +245,7 @@ public class FinanceService : IFinanceService
 
         if (amount > item.RemainingAmount)
         {
-            throw new BusinessRuleException("Girilen tutar kalan borc / alacak tutarindan buyuk olamaz.");
+            throw new ValidationException("Girilen tutar kalan borc / alacak tutarindan buyuk olamaz.");
         }
 
         if (amount >= item.RemainingAmount)
@@ -308,7 +308,7 @@ public class FinanceService : IFinanceService
 
         if (!canAccess)
         {
-            throw new BusinessRuleException("Islem kaydi bulunamadi.");
+            throw new NotFoundException("Islem kaydi bulunamadi.");
         }
 
         return transaction!;
@@ -327,7 +327,7 @@ public class FinanceService : IFinanceService
 
         if (!canAccess)
         {
-            throw new BusinessRuleException("Alacak / borc kaydi bulunamadi.");
+            throw new NotFoundException("Alacak / borc kaydi bulunamadi.");
         }
 
         return item!;
@@ -341,7 +341,7 @@ public class FinanceService : IFinanceService
     {
         if (amount <= 0)
         {
-            throw new Exception("Transaction amount must be greater than zero");
+            throw new ValidationException("Transaction amount must be greater than zero");
         }
 
         if (type != TransactionType.Expense || !categoryId.HasValue)
@@ -360,7 +360,7 @@ public class FinanceService : IFinanceService
 
             if (category == null)
             {
-                throw new Exception("General expense category not found");
+                throw new ValidationException("General expense category not found");
             }
 
             return;
@@ -375,7 +375,7 @@ public class FinanceService : IFinanceService
 
         if (vehicleCategory == null)
         {
-            throw new Exception("Vehicle expense category not found");
+            throw new ValidationException("Vehicle expense category not found");
         }
     }
 

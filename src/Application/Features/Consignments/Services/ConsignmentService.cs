@@ -503,7 +503,7 @@ public class ConsignmentService : IConsignmentService
         var consignment = await _context.Consignments.FirstOrDefaultAsync(item => item.Id == id && item.Type == type);
         if (consignment == null)
         {
-            throw new BusinessRuleException("Konsinye kaydi bulunamadi.");
+            throw new NotFoundException("Konsinye kaydi bulunamadi.");
         }
 
         return consignment;
@@ -523,7 +523,7 @@ public class ConsignmentService : IConsignmentService
 
         if (segment == null || brand == null || model == null)
         {
-            throw new BusinessRuleException("Secilen segment, marka veya model bulunamadi.");
+            throw new NotFoundException("Secilen segment, marka veya model bulunamadi.");
         }
 
         if (model.VehicleBrandId != brand.Id)

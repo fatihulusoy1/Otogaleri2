@@ -30,13 +30,16 @@ public class ExceptionMiddleware
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = ex switch
             {
+                ValidationException => (int)HttpStatusCode.BadRequest,
+                UnauthorizedException => (int)HttpStatusCode.Unauthorized,
+                NotFoundException => (int)HttpStatusCode.NotFound,
                 BusinessRuleException => (int)HttpStatusCode.Conflict,
                 _ => (int)HttpStatusCode.InternalServerError
             };
 
             var response = ex switch
             {
-                BusinessRuleException => new ProblemDetails
+                ValidationException or UnauthorizedException or NotFoundException or BusinessRuleException => new ProblemDetails
                 {
                     Status = context.Response.StatusCode,
                     Title = ex.Message

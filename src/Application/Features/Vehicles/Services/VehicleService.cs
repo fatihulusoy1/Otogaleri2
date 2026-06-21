@@ -192,7 +192,7 @@ public class VehicleService : IVehicleService
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
         if (vehicle == null)
         {
-            throw new Exception("Vehicle not found");
+            throw new NotFoundException("Vehicle not found");
         }
 
         vehicle.Plate = request.Plate.Trim().ToUpperInvariant();
@@ -260,13 +260,13 @@ public class VehicleService : IVehicleService
     {
         if (request.Amount <= 0)
         {
-            throw new Exception("Expense amount must be greater than zero");
+            throw new ValidationException("Expense amount must be greater than zero");
         }
 
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
         if (vehicle == null)
         {
-            throw new Exception("Vehicle not found");
+            throw new NotFoundException("Vehicle not found");
         }
 
         if (request.CategoryId.HasValue)
@@ -280,7 +280,7 @@ public class VehicleService : IVehicleService
 
             if (!isValidCategory)
             {
-                throw new Exception("Selected category is not valid for vehicle expenses");
+                throw new ValidationException("Selected category is not valid for vehicle expenses");
             }
         }
 
@@ -325,7 +325,7 @@ public class VehicleService : IVehicleService
     {
         if (request.Amount <= 0)
         {
-            throw new Exception("Expense amount must be greater than zero");
+            throw new ValidationException("Expense amount must be greater than zero");
         }
 
         if (request.CategoryId.HasValue)
@@ -339,7 +339,7 @@ public class VehicleService : IVehicleService
 
             if (!isValidCategory)
             {
-                throw new Exception("Selected category is not valid for vehicle expenses");
+                throw new ValidationException("Selected category is not valid for vehicle expenses");
             }
         }
 
@@ -353,7 +353,7 @@ public class VehicleService : IVehicleService
 
         if (expense == null)
         {
-            throw new Exception("Expense not found");
+            throw new NotFoundException("Expense not found");
         }
 
         expense.Expense.Description = request.Description.Trim();
@@ -478,7 +478,7 @@ public class VehicleService : IVehicleService
     {
         if (request.SalePrice <= 0)
         {
-            throw new Exception("Sale price must be greater than zero");
+            throw new ValidationException("Sale price must be greater than zero");
         }
 
         ValidateSaleTradeRequest(request.SalePrice, request.TradeAmount);
@@ -487,12 +487,12 @@ public class VehicleService : IVehicleService
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
         if (vehicle == null)
         {
-            throw new Exception("Vehicle not found");
+            throw new NotFoundException("Vehicle not found");
         }
 
         if (vehicle.Status == VehicleStatus.Sold)
         {
-            throw new Exception("Vehicle is already sold");
+            throw new BusinessRuleException("Vehicle is already sold");
         }
 
         var totalExpenseCost = await _context.VehicleExpenses
@@ -559,7 +559,7 @@ public class VehicleService : IVehicleService
     {
         if (request.SalePrice <= 0)
         {
-            throw new Exception("Sale price must be greater than zero");
+            throw new ValidationException("Sale price must be greater than zero");
         }
 
         ValidateSaleTradeRequest(request.SalePrice, request.TradeAmount);
@@ -568,12 +568,12 @@ public class VehicleService : IVehicleService
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
         if (vehicle == null)
         {
-            throw new Exception("Vehicle not found");
+            throw new NotFoundException("Vehicle not found");
         }
 
         if (vehicle.Status != VehicleStatus.Sold || !vehicle.ActualSalePrice.HasValue)
         {
-            throw new Exception("Vehicle sale record was not found");
+            throw new NotFoundException("Vehicle sale record was not found");
         }
 
         var totalExpenseCost = await _context.VehicleExpenses
@@ -723,7 +723,7 @@ public class VehicleService : IVehicleService
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == id);
         if (vehicle == null)
         {
-            throw new Exception("Vehicle not found");
+            throw new NotFoundException("Vehicle not found");
         }
 
         vehicle.Plate = request.Plate.Trim().ToUpperInvariant();
@@ -865,17 +865,17 @@ public class VehicleService : IVehicleService
     {
         if (string.IsNullOrWhiteSpace(plate))
         {
-            throw new Exception("Plate is required");
+            throw new ValidationException("Plate is required");
         }
 
         if (segmentId == Guid.Empty || brandId == Guid.Empty || modelId == Guid.Empty)
         {
-            throw new Exception("Segment, brand and model are required");
+            throw new ValidationException("Segment, brand and model are required");
         }
 
         if (purchasePrice <= 0)
         {
-            throw new Exception("Purchase price must be greater than zero");
+            throw new ValidationException("Purchase price must be greater than zero");
         }
     }
 
@@ -929,17 +929,17 @@ public class VehicleService : IVehicleService
 
         if (segment == null || brand == null || model == null)
         {
-            throw new Exception("Selected segment, brand or model was not found");
+            throw new NotFoundException("Selected segment, brand or model was not found");
         }
 
         if (model.VehicleBrandId != brand.Id)
         {
-            throw new Exception("Selected model does not belong to the selected brand");
+            throw new ValidationException("Selected model does not belong to the selected brand");
         }
 
         if (model.VehicleSegmentId.HasValue && model.VehicleSegmentId != segment.Id)
         {
-            throw new Exception("Selected model does not match the selected segment");
+            throw new ValidationException("Selected model does not match the selected segment");
         }
 
         return (segment, brand, model);

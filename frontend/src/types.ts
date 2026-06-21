@@ -19,6 +19,11 @@ export interface RegisterRequest extends LoginRequest {
   tenantName: string;
 }
 
+export interface RefreshTokenRequest {
+  token: string;
+  refreshToken: string;
+}
+
 export interface DashboardSummary {
   totalVehicles: number;
   inStockVehicles: number;
