@@ -20,15 +20,26 @@ public interface IApplicationDbContext
     DbSet<RolePermission> RolePermissions { get; }
 
     DbSet<Vehicle> Vehicles { get; }
+    DbSet<VehicleSegment> VehicleSegments { get; }
+    DbSet<VehicleBrand> VehicleBrands { get; }
+    DbSet<VehicleCatalogModel> VehicleCatalogModels { get; }
+    DbSet<Consignment> Consignments { get; }
+    DbSet<VehicleTrade> VehicleTrades { get; }
     DbSet<VehicleExpense> VehicleExpenses { get; }
     DbSet<VehicleAttachment> VehicleAttachments { get; }
 
     DbSet<IncomeCategory> IncomeCategories { get; }
     DbSet<ExpenseCategory> ExpenseCategories { get; }
+    DbSet<VehicleExpenseCategory> VehicleExpenseCategories { get; }
+    DbSet<GeneralExpenseCategory> GeneralExpenseCategories { get; }
     DbSet<Transaction> Transactions { get; }
+    DbSet<ReceivablePayable> ReceivablePayables { get; }
 
     DbSet<Customer> Customers { get; }
     DbSet<Supplier> Suppliers { get; }
+
+    Guid? CurrentTenantId { get; }
+    bool CurrentUserIsSuperAdmin { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

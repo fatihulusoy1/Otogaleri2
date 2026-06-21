@@ -38,12 +38,20 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<VehicleSegment> VehicleSegments => Set<VehicleSegment>();
+    public DbSet<VehicleBrand> VehicleBrands => Set<VehicleBrand>();
+    public DbSet<VehicleCatalogModel> VehicleCatalogModels => Set<VehicleCatalogModel>();
+    public DbSet<Consignment> Consignments => Set<Consignment>();
+    public DbSet<VehicleTrade> VehicleTrades => Set<VehicleTrade>();
     public DbSet<VehicleExpense> VehicleExpenses => Set<VehicleExpense>();
     public DbSet<VehicleAttachment> VehicleAttachments => Set<VehicleAttachment>();
 
     public DbSet<IncomeCategory> IncomeCategories => Set<IncomeCategory>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<VehicleExpenseCategory> VehicleExpenseCategories => Set<VehicleExpenseCategory>();
+    public DbSet<GeneralExpenseCategory> GeneralExpenseCategories => Set<GeneralExpenseCategory>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<ReceivablePayable> ReceivablePayables => Set<ReceivablePayable>();
 
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
@@ -59,6 +67,49 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         modelBuilder.Entity<Tenant>().HasIndex(t => t.Identifier).IsUnique();
+        modelBuilder.Entity<VehicleSegment>().HasIndex(segment => new { segment.TenantId, segment.Name }).IsUnique();
+        modelBuilder.Entity<VehicleBrand>().HasIndex(brand => new { brand.TenantId, brand.Name }).IsUnique();
+        modelBuilder.Entity<VehicleExpenseCategory>().HasIndex(category => new { category.TenantId, category.Name }).IsUnique();
+        modelBuilder.Entity<GeneralExpenseCategory>().HasIndex(category => new { category.TenantId, category.Name }).IsUnique();
+        modelBuilder.Entity<ReceivablePayable>()
+            .HasIndex(item => new { item.TenantId, item.Type, item.Status, item.DueDate });
+        modelBuilder.Entity<VehicleCatalogModel>()
+            .HasIndex(model => new { model.TenantId, model.VehicleBrandId, model.VehicleSegmentId, model.Name })
+            .IsUnique();
+        modelBuilder.Entity<Consignment>()
+            .HasIndex(consignment => new { consignment.TenantId, consignment.Type, consignment.Status });
+        modelBuilder.Entity<VehicleTrade>()
+            .HasIndex(trade => new { trade.TenantId, trade.OperationType, trade.SourceVehicleId });
+
+        modelBuilder.Entity<Vehicle>()
+            .HasOne(vehicle => vehicle.SegmentLookup)
+            .WithMany(segment => segment.Vehicles)
+            .HasForeignKey(vehicle => vehicle.SegmentId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Vehicle>()
+            .HasOne(vehicle => vehicle.BrandLookup)
+            .WithMany(brand => brand.Vehicles)
+            .HasForeignKey(vehicle => vehicle.BrandId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Vehicle>()
+            .HasOne(vehicle => vehicle.ModelLookup)
+            .WithMany(model => model.Vehicles)
+            .HasForeignKey(vehicle => vehicle.ModelId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<VehicleCatalogModel>()
+            .HasOne(model => model.VehicleBrand)
+            .WithMany(brand => brand.Models)
+            .HasForeignKey(model => model.VehicleBrandId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VehicleCatalogModel>()
+            .HasOne(model => model.VehicleSegment)
+            .WithMany(segment => segment.Models)
+            .HasForeignKey(model => model.VehicleSegmentId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 
     private void ConfigureGlobalFilters(ModelBuilder modelBuilder)

@@ -17,7 +17,9 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardSummaryDto> GetSummaryAsync()
     {
-        var vehicles = await _context.Vehicles.ToListAsync();
+        var vehicles = await _context.Vehicles
+            .Where(vehicle => vehicle.OwnershipType == VehicleOwnershipType.Owned)
+            .ToListAsync();
         var vehicleIds = vehicles.Select(vehicle => vehicle.Id).ToList();
 
         var expenseLookup = vehicleIds.Count == 0
@@ -43,16 +45,17 @@ public class DashboardService : IDashboardService
         var totalSalesRevenue = soldVehicleList.Sum(vehicle => vehicle.ActualSalePrice ?? 0m);
         var soldVehicleCost = soldVehicleList.Sum(vehicle => vehicle.PurchasePrice + expenseLookup.GetValueOrDefault(vehicle.Id));
         var grossProfit = totalSalesRevenue - soldVehicleCost;
-        var grossProfitMargin = totalSalesRevenue == 0 ? 0 : Math.Round((grossProfit / totalSalesRevenue) * 100m, 2);
+        var grossProfitMargin = soldVehicleCost == 0 ? 0 : Math.Round((grossProfit / soldVehicleCost) * 100m, 2);
 
         var currentStockVehicles = vehicles.Where(vehicle => vehicle.Status == VehicleStatus.InStock).ToList();
         var currentStockPurchaseCost = currentStockVehicles.Sum(vehicle => vehicle.PurchasePrice);
         var currentStockExpenseCost = currentStockVehicles.Sum(vehicle => expenseLookup.GetValueOrDefault(vehicle.Id));
         var currentStockTotalCost = currentStockPurchaseCost + currentStockExpenseCost;
 
-        var firstDayOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var utcNow = DateTime.UtcNow;
+        var firstDayOfMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var currentMonthPurchaseCost = vehicles
-            .Where(vehicle => vehicle.CreatedAt >= firstDayOfMonth)
+            .Where(vehicle => vehicle.PurchaseDate >= firstDayOfMonth)
             .Sum(vehicle => vehicle.PurchasePrice);
 
         var currentMonthExpenseCost = await _context.Transactions

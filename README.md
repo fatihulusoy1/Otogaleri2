@@ -1,28 +1,48 @@
-# Auto Gallery SaaS Backend
+# AutoGallery SaaS
 
-Bu proje, SaaS modelinde çalışan, multi-tenant bir oto galeri yönetim sistemidir.
+Multi-tenant oto galeri yönetim sistemi. Backend `.NET 8 Web API`, frontend `React + Vite` ile hazırlanmıştır.
 
-## Teknolojiler
+## Backend
+
+Teknolojiler:
 - .NET 8 Web API
 - PostgreSQL
 - Entity Framework Core
-- JWT + Refresh Token
-- Serilog
-- Docker
+- JWT
+- Swagger
 
-## Mimari
-- **Domain:** Core entityler, arayüzler ve domain mantığı.
-- **Application:** Business logic, DTOs, servis arayüzleri.
-- **Infrastructure:** JWT, Logging, File Storage implementasyonları.
-- **Persistence:** EF Core DbContext, Migrations, Seeding.
-- **Api:** RESTful endpointler, Middleware.
+Çalıştırma:
 
-## Multi-Tenancy
-Sistem, paylaşımlı veritabanı (Shared Database) modelini kullanır. Her tabloda `TenantId` alanı bulunur ve EF Core Global Query Filter'lar ile veriler izole edilir.
-
-## Kurulum
-```bash
-docker-compose up --build
+```powershell
+dotnet run --project src/Api/AutoGallerySaaS.Api.csproj
 ```
 
-API'ye `http://localhost:5000/swagger` adresinden erişilebilir.
+Swagger:
+
+[http://localhost:5056/swagger/index.html](http://localhost:5056/swagger/index.html)
+
+## Frontend
+
+Frontend klasörü:
+
+[frontend](C:/OtoGaleri/OtoGaleri2/Otogaleri2/frontend)
+
+Kullanılan ekranlar:
+- Login / Register
+- Dashboard
+- Satınalma
+- Satış
+- Araçlar
+- Stok
+
+Çalıştırma:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Vite geliştirme sunucusu varsayılan olarak `http://localhost:5173` adresinde açılır ve `/api` isteklerini backend'e proxy eder.
+
+İsterseniz farklı bir API adresi için [frontend/.env.example](C:/OtoGaleri/OtoGaleri2/Otogaleri2/frontend/.env.example) dosyasını kopyalayıp `.env` oluşturabilirsiniz.

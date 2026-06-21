@@ -17,6 +17,12 @@ public class VehiclesController : ControllerBase
         _vehicleService = vehicleService;
     }
 
+    [HttpGet("lookups")]
+    public async Task<ActionResult<VehicleLookupsDto>> GetLookups()
+    {
+        return Ok(await _vehicleService.GetLookupsAsync());
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<VehicleDto>>> GetAll()
     {
@@ -55,6 +61,19 @@ public class VehiclesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = purchase.VehicleId }, purchase);
     }
 
+    [HttpPut("purchases/{id}")]
+    public async Task<ActionResult<PurchaseRecordDto>> UpdatePurchase(Guid id, UpdatePurchaseRequest request)
+    {
+        return Ok(await _vehicleService.UpdatePurchaseAsync(id, request));
+    }
+
+    [HttpDelete("purchases/{id}")]
+    public async Task<IActionResult> DeletePurchase(Guid id)
+    {
+        await _vehicleService.DeletePurchaseAsync(id);
+        return NoContent();
+    }
+
     [HttpGet("sales")]
     public async Task<ActionResult<List<VehicleSaleDto>>> GetSales()
     {
@@ -67,6 +86,19 @@ public class VehiclesController : ControllerBase
         return Ok(await _vehicleService.CompleteSaleAsync(id, request));
     }
 
+    [HttpPut("{id}/sales")]
+    public async Task<ActionResult<VehicleSaleDto>> UpdateSale(Guid id, UpdateVehicleSaleRequest request)
+    {
+        return Ok(await _vehicleService.UpdateSaleAsync(id, request));
+    }
+
+    [HttpDelete("{id}/sales")]
+    public async Task<IActionResult> DeleteSale(Guid id)
+    {
+        await _vehicleService.DeleteSaleAsync(id);
+        return NoContent();
+    }
+
     [HttpGet("expenses")]
     public async Task<ActionResult<List<VehicleExpenseDto>>> GetExpenses([FromQuery] Guid? vehicleId)
     {
@@ -77,6 +109,19 @@ public class VehiclesController : ControllerBase
     public async Task<ActionResult<VehicleExpenseDto>> AddExpense(Guid id, CreateVehicleExpenseRequest request)
     {
         return Ok(await _vehicleService.AddExpenseAsync(id, request));
+    }
+
+    [HttpPut("expenses/{id}")]
+    public async Task<ActionResult<VehicleExpenseDto>> UpdateExpense(Guid id, UpdateVehicleExpenseRequest request)
+    {
+        return Ok(await _vehicleService.UpdateExpenseAsync(id, request));
+    }
+
+    [HttpDelete("expenses/{id}")]
+    public async Task<IActionResult> DeleteExpense(Guid id)
+    {
+        await _vehicleService.DeleteExpenseAsync(id);
+        return NoContent();
     }
 
     [HttpPut("{id}")]

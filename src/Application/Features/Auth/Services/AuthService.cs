@@ -2,6 +2,8 @@ using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Auth.Dtos;
 using AutoGallerySaaS.Domain.Entities.Identity;
 using AutoGallerySaaS.Domain.Entities.SaaS;
+using AutoGallerySaaS.Domain.Entities.Finance;
+using AutoGallerySaaS.Domain.Entities.Vehicles;
 using Microsoft.EntityFrameworkCore;
 
 namespace AutoGallerySaaS.Application.Features.Auth.Services;

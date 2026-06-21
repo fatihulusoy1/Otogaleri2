@@ -1,7 +1,9 @@
 using System.Text;
 using AutoGallerySaaS.Api.Middleware;
 using AutoGallerySaaS.Application.Common.Interfaces;
+using AutoGallerySaaS.Application.Features.Admin.Services;
 using AutoGallerySaaS.Application.Features.Auth.Services;
+using AutoGallerySaaS.Application.Features.Consignments.Services;
 using AutoGallerySaaS.Application.Features.Crm.Services;
 using AutoGallerySaaS.Application.Features.Dashboard.Services;
 using AutoGallerySaaS.Application.Features.Finance.Services;
@@ -59,6 +61,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IDateTime, DateTimeService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IConsignmentService, ConsignmentService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<ICrmService, CrmService>();
@@ -93,7 +97,11 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("SuperAdminOnly", policy =>
+        policy.RequireClaim("is_super_admin", bool.TrueString));
+});
 
 var app = builder.Build();
 
