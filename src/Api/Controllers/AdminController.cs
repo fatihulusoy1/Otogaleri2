@@ -45,6 +45,38 @@ public class AdminController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("tenants/{id}/subscription")]
+    public async Task<IActionResult> UpdateTenantSubscription(Guid id, UpdateTenantSubscriptionRequest request)
+    {
+        await _adminService.UpdateTenantSubscriptionAsync(id, request);
+        return NoContent();
+    }
+
+    [HttpDelete("tenants/{id}")]
+    public async Task<IActionResult> DeleteTenant(Guid id)
+    {
+        await _adminService.DeleteTenantAsync(id);
+        return NoContent();
+    }
+
+    [HttpGet("plans")]
+    public async Task<ActionResult<List<AdminSubscriptionPlanDto>>> GetPlans()
+    {
+        return Ok(await _adminService.GetPlansAsync());
+    }
+
+    [HttpPost("plans")]
+    public async Task<ActionResult<AdminSubscriptionPlanDto>> CreatePlan(SaveSubscriptionPlanRequest request)
+    {
+        return Ok(await _adminService.CreatePlanAsync(request));
+    }
+
+    [HttpPut("plans/{id}")]
+    public async Task<ActionResult<AdminSubscriptionPlanDto>> UpdatePlan(Guid id, SaveSubscriptionPlanRequest request)
+    {
+        return Ok(await _adminService.UpdatePlanAsync(id, request));
+    }
+
     [HttpGet("catalog")]
     public async Task<ActionResult<AdminCatalogLookupsDto>> GetCatalog()
     {

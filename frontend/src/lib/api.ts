@@ -1,12 +1,15 @@
 import type {
   AdminCatalogLookups,
+  AdminSubscriptionPlan,
   AdminTenant,
   AdminUser,
   BrokeredConsignment,
   StockConsignment,
   ReceivablePayable,
   ExpenseCategory,
+  SaveSubscriptionPlanRequest,
   Transaction,
+  UpdateTenantSubscriptionRequest,
 } from "../types";
 import type {
   AuthResponse,
@@ -248,6 +251,30 @@ export const api = {
     return request<void>(`/api/admin/users/${userId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ isActive })
+    }, token);
+  },
+  adminUpdateTenantSubscription(token: string, tenantId: string, payload: UpdateTenantSubscriptionRequest) {
+    return request<void>(`/api/admin/tenants/${tenantId}/subscription`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminDeleteTenant(token: string, tenantId: string) {
+    return request<void>(`/api/admin/tenants/${tenantId}`, { method: "DELETE" }, token);
+  },
+  adminGetPlans(token: string) {
+    return request<AdminSubscriptionPlan[]>("/api/admin/plans", undefined, token);
+  },
+  adminCreatePlan(token: string, payload: SaveSubscriptionPlanRequest) {
+    return request<AdminSubscriptionPlan>("/api/admin/plans", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminUpdatePlan(token: string, id: string, payload: SaveSubscriptionPlanRequest) {
+    return request<AdminSubscriptionPlan>(`/api/admin/plans/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
     }, token);
   },
   adminGetCatalog(token: string) {

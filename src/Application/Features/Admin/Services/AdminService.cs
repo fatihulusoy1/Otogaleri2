@@ -4,6 +4,7 @@ using AutoGallerySaaS.Application.Common.Interfaces;
 using AutoGallerySaaS.Application.Features.Admin.Dtos;
 using AutoGallerySaaS.Application.Features.Finance.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
+using AutoGallerySaaS.Domain.Entities.SaaS;
 using AutoGallerySaaS.Domain.Entities.Vehicles;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,16 +24,41 @@ public class AdminService : IAdminService
     {
         var tenants = await _context.Tenants
             .IgnoreQueryFilters()
+            .Where(tenant => !tenant.IsDeleted)
             .OrderBy(tenant => tenant.Name)
+            .ToListAsync();
+
+        var userCounts = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(user => !user.IsDeleted)
+            .GroupBy(user => user.TenantId)
+            .Select(group => new { TenantId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.TenantId, item => item.Count);
+
+        var vehicleCounts = await _context.Vehicles
+            .IgnoreQueryFilters()
+            .Where(vehicle => !vehicle.IsDeleted)
+            .GroupBy(vehicle => vehicle.TenantId)
+            .Select(group => new { TenantId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.TenantId, item => item.Count);
+
+        var planNames = await _context.SubscriptionPlans
+            .ToDictionaryAsync(plan => plan.Id, plan => plan.Name);
+
+        return tenants
             .Select(tenant => new AdminTenantDto(
                 tenant.Id,
                 tenant.Name,
                 tenant.Identifier,
                 tenant.IsActive,
-                _context.Users.IgnoreQueryFilters().Count(user => user.TenantId == tenant.Id && !user.IsDeleted)))
-            .ToListAsync();
-
-        return tenants;
+                userCounts.GetValueOrDefault(tenant.Id),
+                vehicleCounts.GetValueOrDefault(tenant.Id),
+                tenant.SubscriptionPlanId,
+                planNames.GetValueOrDefault(tenant.SubscriptionPlanId),
+                tenant.SubscriptionEndDate,
+                tenant.IsTrial,
+                tenant.CreatedAt))
+            .ToList();
     }
 
     public async Task<List<AdminUserDto>> GetUsersAsync(Guid? tenantId = null)
@@ -88,6 +114,149 @@ public class AdminService : IAdminService
         user.IsActive = isActive;
         await _context.SaveChangesAsync();
     }
+
+    public async Task UpdateTenantSubscriptionAsync(Guid tenantId, UpdateTenantSubscriptionRequest request)
+    {
+        var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(item => item.Id == tenantId);
+        if (tenant == null)
+        {
+            throw new NotFoundException("Tenant not found");
+        }
+
+        var planExists = await _context.SubscriptionPlans.AnyAsync(plan => plan.Id == request.SubscriptionPlanId);
+        if (!planExists)
+        {
+            throw new NotFoundException("Subscription plan not found");
+        }
+
+        tenant.SubscriptionPlanId = request.SubscriptionPlanId;
+        tenant.SubscriptionEndDate = NormalizeToUtc(request.SubscriptionEndDate);
+        tenant.IsTrial = request.IsTrial;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteTenantAsync(Guid tenantId)
+    {
+        var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(item => item.Id == tenantId);
+        if (tenant == null || tenant.IsDeleted)
+        {
+            return;
+        }
+
+        var hasSuperAdmin = await _context.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(user => user.TenantId == tenantId && user.IsSuperAdmin && !user.IsDeleted);
+        if (hasSuperAdmin)
+        {
+            throw new BusinessRuleException("Super admin kullanici iceren tenant silinemez.");
+        }
+
+        tenant.IsDeleted = true;
+        tenant.IsActive = false;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<AdminSubscriptionPlanDto>> GetPlansAsync()
+    {
+        return await _context.SubscriptionPlans
+            .OrderBy(plan => plan.MonthlyPrice)
+            .ThenBy(plan => plan.Name)
+            .Select(plan => new AdminSubscriptionPlanDto(
+                plan.Id,
+                plan.Name,
+                plan.Description,
+                plan.MonthlyPrice,
+                plan.YearlyPrice,
+                plan.MaxUsers,
+                plan.MaxVehicles,
+                plan.IsActive))
+            .ToListAsync();
+    }
+
+    public async Task<AdminSubscriptionPlanDto> CreatePlanAsync(SaveSubscriptionPlanRequest request)
+    {
+        var name = ValidatePlanRequest(request);
+
+        var exists = await _context.SubscriptionPlans.AnyAsync(plan => plan.Name == name);
+        if (exists)
+        {
+            throw new BusinessRuleException("Ayni isimde bir plan zaten var.");
+        }
+
+        var plan = new SubscriptionPlan
+        {
+            Name = name,
+            Description = request.Description.Trim(),
+            MonthlyPrice = request.MonthlyPrice,
+            YearlyPrice = request.YearlyPrice,
+            MaxUsers = request.MaxUsers,
+            MaxVehicles = request.MaxVehicles,
+            IsActive = request.IsActive
+        };
+        _context.SubscriptionPlans.Add(plan);
+        await _context.SaveChangesAsync();
+
+        return new AdminSubscriptionPlanDto(
+            plan.Id, plan.Name, plan.Description, plan.MonthlyPrice, plan.YearlyPrice, plan.MaxUsers, plan.MaxVehicles, plan.IsActive);
+    }
+
+    public async Task<AdminSubscriptionPlanDto> UpdatePlanAsync(Guid id, SaveSubscriptionPlanRequest request)
+    {
+        var name = ValidatePlanRequest(request);
+
+        var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(item => item.Id == id);
+        if (plan == null)
+        {
+            throw new NotFoundException("Subscription plan not found");
+        }
+
+        var conflicting = await _context.SubscriptionPlans.AnyAsync(item => item.Id != id && item.Name == name);
+        if (conflicting)
+        {
+            throw new BusinessRuleException("Ayni isimde bir plan zaten var.");
+        }
+
+        plan.Name = name;
+        plan.Description = request.Description.Trim();
+        plan.MonthlyPrice = request.MonthlyPrice;
+        plan.YearlyPrice = request.YearlyPrice;
+        plan.MaxUsers = request.MaxUsers;
+        plan.MaxVehicles = request.MaxVehicles;
+        plan.IsActive = request.IsActive;
+        await _context.SaveChangesAsync();
+
+        return new AdminSubscriptionPlanDto(
+            plan.Id, plan.Name, plan.Description, plan.MonthlyPrice, plan.YearlyPrice, plan.MaxUsers, plan.MaxVehicles, plan.IsActive);
+    }
+
+    private static string ValidatePlanRequest(SaveSubscriptionPlanRequest request)
+    {
+        var name = request.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ValidationException("Plan adi zorunludur.");
+        }
+
+        if (request.MonthlyPrice < 0 || request.YearlyPrice < 0)
+        {
+            throw new ValidationException("Plan fiyatlari negatif olamaz.");
+        }
+
+        if (request.MaxUsers < 1 || request.MaxVehicles < 1)
+        {
+            throw new ValidationException("Kullanici ve arac limitleri en az 1 olmalidir.");
+        }
+
+        return name;
+    }
+
+    private static DateTime NormalizeToUtc(DateTime value) =>
+        value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
 
     public async Task<AdminCatalogLookupsDto> GetCatalogAsync()
     {
