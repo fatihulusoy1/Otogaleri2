@@ -9,6 +9,10 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
+# Async mod: oturum hemen baslar, kurulum arka planda surer.
+# asyncTimeout, ilk kurulumda (SDK indirme dahil) yetecek sekilde genis tutuldu (10 dk).
+echo '{"async": true, "asyncTimeout": 600000}'
+
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
 SUDO=""
