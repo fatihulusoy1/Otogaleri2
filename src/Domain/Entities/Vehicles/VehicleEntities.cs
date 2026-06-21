@@ -31,6 +31,7 @@ public class Vehicle : BaseTenantEntity
     public decimal? TargetSalePrice { get; set; }
     public decimal? ActualSalePrice { get; set; }
     public DateTime? SaleDate { get; set; }
+    public string? SaleNotaryRegistryNumber { get; set; }
     public string? SaleTradePlate { get; set; }
     public decimal? SaleTradeAmount { get; set; }
     public VehicleStatus Status { get; set; }
@@ -38,6 +39,7 @@ public class Vehicle : BaseTenantEntity
 
     public ICollection<VehicleExpense> Expenses { get; set; } = new List<VehicleExpense>();
     public ICollection<VehicleAttachment> Attachments { get; set; } = new List<VehicleAttachment>();
+    public ICollection<VehiclePhoto> Photos { get; set; } = new List<VehiclePhoto>();
 }
 
 public class VehicleSegment : BaseTenantEntity
@@ -89,6 +91,19 @@ public class VehicleAttachment : BaseTenantEntity
     public string FilePath { get; set; } = null!;
     public string FileType { get; set; } = null!; // Image, Document
     public long FileSize { get; set; }
+}
+
+public class VehiclePhoto : BaseTenantEntity
+{
+    public Guid VehicleId { get; set; }
+    public Vehicle Vehicle { get; set; } = null!;
+    // Object storage'daki benzersiz dosya anahtarı (R2'de obje anahtarı, local'de dosya adı).
+    public string FileName { get; set; } = null!;
+    // Tarayıcının fotoğrafı çekeceği public link. Local'de "/uploads/..", canlıda R2 absolute URL.
+    public string FileUrl { get; set; } = null!;
+    public long FileSize { get; set; }
+    public string ContentType { get; set; } = null!;
+    public int SortOrder { get; set; }
 }
 
 public class VehicleTrade : BaseTenantEntity

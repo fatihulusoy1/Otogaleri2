@@ -42,6 +42,7 @@ export function BrokeredConsignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!session) {
@@ -91,6 +92,10 @@ export function BrokeredConsignmentsPage() {
   function handleCurrencyInput(value: string, setter: (value: string) => void) {
     const digits = value.replace(/\D/g, "");
     setter(digits ? formatCurrency(Number(digits)) : "");
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   async function reload() {
@@ -205,70 +210,95 @@ export function BrokeredConsignmentsPage() {
       {error && !isModalOpen ? <div className="alert error">{error}</div> : null}
 
       <article className="panel">
-        <div className="panel-heading">
-          <h2>Aracilik kayitlari</h2>
-          <p>{loading ? "Liste hazirlaniyor..." : `${records.length} kayit var.`}</p>
-        </div>
+        <div className="records-sticky-stack">
+          <div className="panel-heading records-heading">
+            <h2>Aracilik kayitlari</h2>
+            <p>{loading ? "Liste hazirlaniyor..." : `${records.length} kayit var.`}</p>
+          </div>
 
-        <div className="records-table">
-          <div className="records-table-head brokered-table-head">
+          <div className="records-table-head brokered-table-head records-table-head-sticky">
             <span>Kisi ve arac</span>
             <span>Tarih</span>
             <span>Tutarlar</span>
             <span>Durum</span>
             <span>Islem</span>
           </div>
+        </div>
 
+        <div className="records-table">
           <div className="records-table-body">
-            {records.map((record) => (
-              <article key={record.id} className="records-row brokered-row">
-                <div className="records-cell records-main">
-                  <strong>{record.plate}</strong>
-                  <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
-                  <small>Sahip: {record.ownerName}</small>
-                  <small>Alici: {record.customerName || "-"}</small>
-                </div>
+            {records.map((record) => {
+              const isExpanded = expandedIds.includes(record.id);
 
-                <div className="records-cell records-dates">
-                  <div>
-                    <span>Islem</span>
-                    <strong>{formatDate(record.consignmentDate)}</strong>
-                  </div>
-                </div>
-
-                <div className="records-cell records-finance">
-                  <div className="finance-stack">
-                    <span>Alim</span>
-                    <strong>{formatCurrency(record.purchasePrice)}</strong>
-                    <span>Komisyon</span>
-                    <strong className="finance-strong">
-                      {record.commissionAmount ? formatCurrency(record.commissionAmount) : "-"}
-                    </strong>
-                  </div>
-                  <div className="finance-stack">
-                    <span>Komisyon orani</span>
-                    <strong className="finance-rate positive">
-                      {record.commissionRate ? formatPercent(record.commissionRate) : "-"}
-                    </strong>
-                    <span>Telefon</span>
-                    <strong>{record.ownerPhone || "-"}</strong>
-                  </div>
-                </div>
-
-                <div className="records-cell">
-                  <span className="status-badge status-success">Tamamlandi</span>
-                </div>
-
-                <div className="records-cell records-actions">
-                  <button type="button" className="ghost-button dark" onClick={() => handleEdit(record)}>
-                    Duzenle
+              return (
+                <article key={record.id} className={`records-row brokered-row record-card-shell ${isExpanded ? "expanded" : ""}`}>
+                  <button
+                    type="button"
+                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
+                    onClick={() => toggleExpanded(record.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="record-mobile-summary-main">
+                      <span className="status-badge status-success">Tamamlandi</span>
+                      <strong>{record.plate}</strong>
+                      <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
+                      <span>
+                        {formatDate(record.consignmentDate)} · {formatCurrency(record.purchasePrice)}
+                      </span>
+                    </div>
+                    <span className="record-mobile-summary-icon" aria-hidden="true">
+                      {isExpanded ? "−" : "+"}
+                    </span>
                   </button>
-                  <button type="button" className="ghost-button danger" onClick={() => setPendingDelete(record)}>
-                    Sil
-                  </button>
-                </div>
-              </article>
-            ))}
+
+                  <div className="records-card-body">
+                    <div className="records-cell records-main">
+                      <strong>{record.plate}</strong>
+                      <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
+                      <small>Sahip: {record.ownerName}</small>
+                      <small>Alici: {record.customerName || "-"}</small>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Islem tarihi</span>
+                        <strong>{formatDate(record.consignmentDate)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Alim</span>
+                        <strong>{formatCurrency(record.purchasePrice)}</strong>
+                        <span>Komisyon</span>
+                        <strong className="finance-strong">
+                          {record.commissionAmount ? formatCurrency(record.commissionAmount) : "-"}
+                        </strong>
+                        <span>Komisyon orani</span>
+                        <strong className="finance-rate positive">
+                          {record.commissionRate ? formatPercent(record.commissionRate) : "-"}
+                        </strong>
+                        <span>Telefon</span>
+                        <strong>{record.ownerPhone || "-"}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-status">
+                      <span className="status-badge status-success">Tamamlandi</span>
+                    </div>
+
+                    <div className="records-cell records-actions">
+                      <button type="button" className="ghost-button dark" onClick={() => handleEdit(record)}>
+                        Duzenle
+                      </button>
+                      <button type="button" className="ghost-button danger" onClick={() => setPendingDelete(record)}>
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
 
             {!loading && records.length === 0 ? <div className="empty-panel">Henuz aracilik kaydi yok.</div> : null}
           </div>

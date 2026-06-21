@@ -11,8 +11,18 @@ public class User : AuditableEntity, ITenantEntity, ISoftDelete
     public string PasswordHash { get; set; } = null!;
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
+    public DateTime? LastLoginAt { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsSuperAdmin { get; set; }
+
+    // E-posta tabanlı iki adımlı doğrulama (MFA)
+    public bool TwoFactorEnabled { get; set; }
+    public string? TwoFactorCodeHash { get; set; }
+    public DateTime? TwoFactorCodeExpiresAt { get; set; }
+
+    // Şifre sıfırlama (e-posta ile)
+    public string? PasswordResetTokenHash { get; set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; set; }
 
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }

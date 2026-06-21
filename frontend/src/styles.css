@@ -103,6 +103,35 @@ button {
   height: calc(100vh - 40px);
 }
 
+.sidebar > .brand-block,
+.sidebar > .tenant-card {
+  flex-shrink: 0;
+}
+
+.sidebar > .sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  margin-right: -6px;
+}
+
+.nav-folder-bottom {
+  margin-top: auto;
+}
+
+.sidebar > .sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar > .sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+}
+
 .brand-block {
   display: flex;
   gap: 14px;
@@ -156,6 +185,10 @@ button {
 .auth-form {
   display: grid;
   gap: 16px;
+}
+
+.nav-link-bottom {
+  margin-top: auto;
 }
 
 .nav-section-title {
@@ -410,6 +443,103 @@ button {
   gap: 12px;
 }
 
+.new-actions-dropdown {
+  position: relative;
+}
+
+.new-actions-dropdown > .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-actions-caret {
+  font-size: 0.7rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.new-actions-dropdown.open .new-actions-caret {
+  transform: rotate(180deg);
+}
+
+.new-actions-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  min-width: 220px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+.new-actions-menu button {
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 11px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--heading);
+  cursor: pointer;
+}
+
+.new-actions-menu button:hover {
+  background: rgba(20, 83, 45, 0.08);
+  color: var(--primary);
+}
+
+.row-actions-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.row-actions-dropdown > .ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-actions-dropdown.open .new-actions-caret {
+  transform: rotate(180deg);
+}
+
+.row-actions-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 180px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+.row-actions-menu button {
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--heading);
+  cursor: pointer;
+}
+
+.row-actions-menu button:hover {
+  background: rgba(20, 83, 45, 0.08);
+  color: var(--primary);
+}
+
 .page-header h1,
 .auth-hero h1 {
   margin: 8px 0 10px;
@@ -652,6 +782,10 @@ textarea:focus {
 .filter-section strong {
   color: var(--heading);
   font-family: "Space Grotesk", sans-serif;
+}
+
+.filter-toggle {
+  display: none;
 }
 
 .modal-backdrop {
@@ -978,23 +1112,35 @@ textarea:focus {
   border: 1px solid rgba(51, 65, 85, 0.08);
 }
 
-.purchase-row .finance-stack {
+.purchase-row .finance-stack,
+.sales-row .finance-stack,
+.expense-row .finance-stack,
+.general-expense-row .finance-stack {
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 3px 8px;
   padding: 8px 10px;
   align-items: baseline;
 }
 
-.purchase-row .records-finance {
+.purchase-row .records-finance,
+.sales-row .records-finance,
+.expense-row .records-finance,
+.general-expense-row .records-finance {
   grid-template-columns: 1fr;
 }
 
-.purchase-row .finance-stack span {
+.purchase-row .finance-stack span,
+.sales-row .finance-stack span,
+.expense-row .finance-stack span,
+.general-expense-row .finance-stack span {
   font-size: 0.82rem;
   min-width: 0;
 }
 
-.purchase-row .finance-stack strong {
+.purchase-row .finance-stack strong,
+.sales-row .finance-stack strong,
+.expense-row .finance-stack strong,
+.general-expense-row .finance-stack strong {
   justify-self: start;
   text-align: left;
   font-size: 0.98rem;
@@ -1005,12 +1151,14 @@ textarea:focus {
   line-height: 1.3;
 }
 
-.purchase-row .finance-stack-muted {
+.purchase-row .finance-stack-muted,
+.sales-row .finance-stack-muted {
   grid-template-columns: 1fr;
   align-items: center;
 }
 
-.purchase-row .finance-stack-muted span {
+.purchase-row .finance-stack-muted span,
+.sales-row .finance-stack-muted span {
   font-size: 0.84rem;
 }
 
@@ -1091,27 +1239,248 @@ textarea:focus {
 
 .brokered-table-head,
 .brokered-row {
-  grid-template-columns: minmax(240px, 1.2fr) minmax(180px, 0.7fr) minmax(340px, 1.15fr) 120px 140px;
+  grid-template-columns:
+    minmax(0, 1.3fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1.3fr)
+    120px
+    150px;
+  gap: 10px;
 }
 
 .sales-table-head,
 .sales-row {
-  grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 0.7fr) minmax(340px, 1.2fr) minmax(200px, 0.8fr) 140px;
+  grid-template-columns:
+    minmax(0, 1.2fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.8fr)
+    96px;
+  gap: 10px;
 }
 
 .stock-consignment-table-head,
 .stock-consignment-row {
-  grid-template-columns: minmax(220px, 1.1fr) minmax(220px, 0.9fr) minmax(360px, 1.25fr) 120px 210px;
+  grid-template-columns:
+    minmax(0, 1.1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 1.4fr)
+    120px
+    160px;
+  gap: 10px;
+}
+
+.brokered-row,
+.stock-consignment-row {
+  align-items: start;
+}
+
+.brokered-row .records-finance,
+.stock-consignment-row .records-finance {
+  grid-template-columns: 1fr;
+}
+
+.brokered-row .finance-stack,
+.stock-consignment-row .finance-stack {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 8px;
+  padding: 8px 10px;
+  align-items: baseline;
+}
+
+.brokered-row .finance-stack span,
+.stock-consignment-row .finance-stack span {
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.brokered-row .finance-stack strong,
+.stock-consignment-row .finance-stack strong {
+  justify-self: start;
+  text-align: left;
+  font-size: 0.98rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.brokered-row .records-main strong,
+.stock-consignment-row .records-main strong {
+  font-size: 1.08rem;
+}
+
+.brokered-row .records-main span,
+.brokered-row .records-main small,
+.stock-consignment-row .records-main span,
+.stock-consignment-row .records-main small {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.brokered-row .records-cell,
+.brokered-table-head > *,
+.stock-consignment-row .records-cell,
+.stock-consignment-table-head > * {
+  min-width: 0;
+}
+
+.brokered-row .records-status,
+.stock-consignment-row .records-status {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: start;
+}
+
+.brokered-row .records-actions,
+.stock-consignment-row .records-actions {
+  width: 100%;
+  gap: 8px;
+  align-content: start;
+  justify-items: stretch;
+}
+
+.brokered-row .records-actions .ghost-button,
+.stock-consignment-row .records-actions .ghost-button {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 10px;
 }
 
 .expense-table-head,
 .expense-row {
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.8fr) minmax(220px, 1fr) minmax(120px, 0.65fr) 120px;
+  grid-template-columns:
+    minmax(0, 1.2fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 0.8fr)
+    96px;
+  gap: 10px;
 }
 
 .general-expense-table-head,
 .general-expense-row {
-  grid-template-columns: minmax(180px, 0.9fr) minmax(220px, 1.2fr) minmax(220px, 0.9fr) minmax(120px, 0.65fr) 140px;
+  grid-template-columns:
+    minmax(0, 1.1fr)
+    minmax(0, 1.3fr)
+    minmax(0, 1fr)
+    minmax(0, 0.8fr)
+    96px;
+  gap: 10px;
+}
+
+.receivable-table-head,
+.receivable-row,
+.payable-table-head,
+.payable-row {
+  grid-template-columns:
+    132px
+    minmax(0, 1.2fr)
+    minmax(0, 1fr)
+    minmax(0, 1.3fr)
+    240px;
+  gap: 10px;
+}
+
+.receivable-row,
+.payable-row {
+  align-items: start;
+}
+
+.receivable-row .records-finance,
+.payable-row .records-finance {
+  grid-template-columns: 1fr;
+}
+
+.receivable-row .finance-stack,
+.payable-row .finance-stack {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 8px;
+  padding: 8px 10px;
+  align-items: baseline;
+}
+
+.receivable-row .finance-stack span,
+.payable-row .finance-stack span {
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.receivable-row .finance-stack strong,
+.payable-row .finance-stack strong {
+  justify-self: start;
+  text-align: left;
+  font-size: 0.98rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.receivable-row .records-main strong,
+.payable-row .records-main strong {
+  font-size: 1.08rem;
+}
+
+.receivable-row .records-main span,
+.receivable-row .records-main small,
+.payable-row .records-main span,
+.payable-row .records-main small {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.receivable-row .records-cell,
+.receivable-table-head > *,
+.payable-row .records-cell,
+.payable-table-head > * {
+  min-width: 0;
+}
+
+.receivable-row .records-status,
+.payable-row .records-status {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: start;
+}
+
+.receivable-row .records-actions,
+.payable-row .records-actions {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-content: start;
+  justify-items: stretch;
+}
+
+.due-remaining-stack.due-remaining-warning {
+  background: rgba(180, 83, 9, 0.12);
+  border-color: rgba(180, 83, 9, 0.24);
+}
+
+.due-remaining-stack.due-remaining-warning span,
+.due-remaining-stack.due-remaining-warning strong {
+  color: var(--accent);
+}
+
+.due-remaining-stack.due-remaining-danger {
+  background: var(--danger-soft);
+  border-color: rgba(180, 35, 24, 0.26);
+}
+
+.due-remaining-stack.due-remaining-danger span,
+.due-remaining-stack.due-remaining-danger strong {
+  color: var(--danger);
 }
 
 .records-table-head {
@@ -1135,27 +1504,45 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.purchase-row {
+.purchase-row,
+.sales-row,
+.expense-row,
+.general-expense-row {
   align-items: start;
 }
 
-.purchase-row .records-main {
+.purchase-row .records-main,
+.sales-row .records-main,
+.expense-row .records-main,
+.general-expense-row .records-main {
   gap: 4px;
 }
 
-.purchase-row .records-main strong {
+.purchase-row .records-main strong,
+.sales-row .records-main strong,
+.expense-row .records-main strong,
+.general-expense-row .records-main strong {
   font-size: 1.08rem;
 }
 
 .purchase-row .records-main span,
-.purchase-row .records-main small {
+.purchase-row .records-main small,
+.sales-row .records-main span,
+.sales-row .records-main small,
+.expense-row .records-main span,
+.expense-row .records-main small,
+.general-expense-row .records-main span,
+.general-expense-row .records-main small {
   font-size: 0.92rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-.purchase-row .records-main small:last-child {
+.purchase-row .records-main small:last-child,
+.sales-row .records-main small:last-child,
+.expense-row .records-main small:last-child,
+.general-expense-row .records-main small:last-child {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1174,19 +1561,31 @@ textarea:focus {
   gap: 8px;
 }
 
-.purchase-row .records-actions {
+.purchase-row .records-actions,
+.sales-row .records-actions,
+.expense-row .records-actions,
+.general-expense-row .records-actions {
   width: 96px;
   justify-self: end;
 }
 
-.purchase-row .records-actions .ghost-button {
+.purchase-row .records-actions .ghost-button,
+.sales-row .records-actions .ghost-button,
+.expense-row .records-actions .ghost-button,
+.general-expense-row .records-actions .ghost-button {
   width: 100%;
   min-width: 0;
   padding: 11px 10px;
 }
 
 .purchase-row .records-cell,
-.purchase-table-head > * {
+.purchase-table-head > *,
+.sales-row .records-cell,
+.sales-table-head > *,
+.expense-row .records-cell,
+.expense-table-head > *,
+.general-expense-row .records-cell,
+.general-expense-table-head > * {
   min-width: 0;
 }
 
@@ -1359,6 +1758,94 @@ textarea:focus {
   color: var(--danger);
 }
 
+.alert.success {
+  background: rgba(20, 83, 45, 0.12);
+  color: var(--primary);
+}
+
+.auth-text-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Abonelik ekranı */
+.expired-gate-shell {
+  min-height: 100vh;
+  padding: 32px 20px;
+  display: flex;
+  justify-content: center;
+  background: var(--app-bg, transparent);
+}
+
+.expired-gate-shell .subscription-page {
+  width: min(880px, 100%);
+}
+
+.subscription-cycle {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.subscription-plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.subscription-plan-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  text-align: left;
+  cursor: pointer;
+}
+
+.subscription-plan-card.selected {
+  border-color: rgba(20, 83, 45, 0.55);
+  box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.18);
+}
+
+.subscription-plan-card strong {
+  color: var(--heading);
+  font-size: 1.1rem;
+}
+
+.subscription-price {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.subscription-price small {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.subscription-plan-desc,
+.subscription-plan-limits {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.subscription-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .empty-panel {
   display: grid;
   place-items: center;
@@ -1444,6 +1931,410 @@ textarea:focus {
   opacity: 0.6;
 }
 
+/* Tenant ve kullanıcı yönetimi ekranı */
+.admin-filter-panel {
+  position: relative;
+  z-index: 5;
+}
+
+.admin-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-row > label {
+  flex: 1;
+  min-width: 240px;
+}
+
+.admin-filter-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.admin-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.admin-avatar.tenant {
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.95), rgba(29, 122, 68, 0.9));
+  color: white;
+}
+
+.admin-avatar.user {
+  background: rgba(20, 83, 45, 0.1);
+  color: var(--primary);
+}
+
+.admin-avatar.sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+}
+
+.admin-tenant-card,
+.admin-user-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.admin-card-select {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-card-select .record-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-card-select .record-main strong {
+  color: var(--heading);
+}
+
+.admin-tenant-card.selected {
+  border-color: rgba(20, 83, 45, 0.55);
+  box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.18);
+}
+
+.admin-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.admin-usercount {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-user-groups {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-user-group {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.admin-group-header strong {
+  color: var(--heading);
+  font-size: 1.02rem;
+}
+
+.admin-group-count {
+  margin-left: auto;
+  min-width: 28px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.admin-user-card {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-user-card .record-main {
+  flex: 1;
+  min-width: 160px;
+}
+
+.admin-user-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-activity-by {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-panel-heading > div {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-panel-heading .primary-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.admin-tenant-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-tenant-meta .status-badge {
+  min-width: 0;
+}
+
+.admin-tenant-meta .admin-usercount {
+  margin-left: auto;
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-form-divider {
+  margin-top: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+  color: var(--heading);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.admin-checkbox input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.admin-checkbox span {
+  color: var(--heading);
+  font-weight: 600;
+}
+
+/* Master-detail düzeni */
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.admin-detail-panel {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.admin-search {
+  width: 100%;
+}
+
+.admin-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-filter-bar .admin-search {
+  flex: 1 1 240px;
+  width: auto;
+  min-width: 220px;
+}
+
+.admin-status-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.admin-filter-bar .admin-status-toggle button,
+.admin-filter-bar > .ghost-button {
+  min-height: 52px;
+}
+
+.admin-days-filter {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-days-filter input {
+  width: 130px;
+}
+
+.admin-filter-summary {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Açık zeminli admin panellerinde düz ghost-button'u okunur yap
+   (varsayılan ghost-button beyaz metinlidir, koyu sidebar içindir). */
+.admin-filters .ghost-button:not(.dark):not(.danger),
+.admin-list-panel .ghost-button:not(.dark):not(.danger),
+.admin-detail-panel .ghost-button:not(.dark):not(.danger) {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--heading);
+  border: 1px solid var(--line);
+}
+
+.admin-filters .ghost-button:not(.dark):not(.danger):hover,
+.admin-list-panel .ghost-button:not(.dark):not(.danger):hover,
+.admin-detail-panel .ghost-button:not(.dark):not(.danger):hover {
+  background: rgba(20, 83, 45, 0.1);
+  border-color: rgba(20, 83, 45, 0.25);
+}
+
+/* Aktif durum filtresi butonu net görünsün */
+.admin-status-toggle .primary-button {
+  box-shadow: 0 6px 16px rgba(20, 83, 45, 0.22);
+}
+
+.admin-tenant-list {
+  display: grid;
+  gap: 12px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-right: -6px;
+}
+
+.admin-tenant-row {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.admin-tenant-row.selected {
+  border-color: rgba(20, 83, 45, 0.55);
+  box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.18);
+}
+
+.admin-tenant-row-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-tenant-row-main .record-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-tenant-row-main .record-main strong {
+  color: var(--heading);
+}
+
+.admin-tenant-row-meta,
+.admin-detail-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-detail-summary {
+  margin-bottom: 16px;
+}
+
+.admin-tenant-row-meta .status-badge,
+.admin-detail-summary .status-badge {
+  min-width: 0;
+}
+
+.admin-tenant-row-meta .admin-usercount {
+  margin-left: auto;
+}
+
+.admin-tenant-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-group-header-button {
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.admin-group-header-button:hover strong {
+  color: var(--primary);
+}
+
+@media (max-width: 1080px) {
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-detail-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .admin-tenant-list {
+    max-height: none;
+  }
+}
+
 .auth-hero,
 .auth-panel {
   padding: 32px;
@@ -1525,15 +2416,36 @@ textarea:focus {
 }
 
 @media (max-width: 1500px) {
-  .purchase-table-head {
+  .purchase-table-head,
+  .sales-table-head,
+  .expense-table-head,
+  .general-expense-table-head,
+  .receivable-table-head,
+  .payable-table-head,
+  .brokered-table-head,
+  .stock-consignment-table-head {
     display: none;
   }
 
-  .purchase-row {
+  .purchase-row,
+  .sales-row,
+  .expense-row,
+  .general-expense-row,
+  .receivable-row,
+  .payable-row,
+  .brokered-row,
+  .stock-consignment-row {
     grid-template-columns: 1fr;
   }
 
-  .purchase-row > .record-mobile-summary {
+  .purchase-row > .record-mobile-summary,
+  .sales-row > .record-mobile-summary,
+  .expense-row > .record-mobile-summary,
+  .general-expense-row > .record-mobile-summary,
+  .receivable-row > .record-mobile-summary,
+  .payable-row > .record-mobile-summary,
+  .brokered-row > .record-mobile-summary,
+  .stock-consignment-row > .record-mobile-summary {
     width: 100%;
     display: flex;
     align-items: center;
@@ -1545,29 +2457,66 @@ textarea:focus {
     background: transparent;
   }
 
-  .purchase-row > .records-card-body {
+  .purchase-row > .records-card-body,
+  .sales-row > .records-card-body,
+  .expense-row > .records-card-body,
+  .general-expense-row > .records-card-body,
+  .receivable-row > .records-card-body,
+  .payable-row > .records-card-body,
+  .brokered-row > .records-card-body,
+  .stock-consignment-row > .records-card-body {
     display: none;
     padding: 0 16px 16px;
     border-top: 1px solid rgba(51, 65, 85, 0.08);
   }
 
-  .purchase-row.expanded > .record-mobile-summary {
+  .purchase-row.expanded > .record-mobile-summary,
+  .sales-row.expanded > .record-mobile-summary,
+  .expense-row.expanded > .record-mobile-summary,
+  .general-expense-row.expanded > .record-mobile-summary,
+  .receivable-row.expanded > .record-mobile-summary,
+  .payable-row.expanded > .record-mobile-summary,
+  .brokered-row.expanded > .record-mobile-summary,
+  .stock-consignment-row.expanded > .record-mobile-summary {
     padding-bottom: 14px;
   }
 
-  .purchase-row.expanded > .records-card-body {
+  .purchase-row.expanded > .records-card-body,
+  .sales-row.expanded > .records-card-body,
+  .expense-row.expanded > .records-card-body,
+  .general-expense-row.expanded > .records-card-body,
+  .receivable-row.expanded > .records-card-body,
+  .payable-row.expanded > .records-card-body,
+  .brokered-row.expanded > .records-card-body,
+  .stock-consignment-row.expanded > .records-card-body {
     display: grid;
     gap: 14px;
     padding-top: 14px;
   }
 
-  .purchase-row .records-actions {
+  .purchase-row .records-actions,
+  .sales-row .records-actions,
+  .expense-row .records-actions,
+  .general-expense-row .records-actions {
     width: 100%;
     justify-self: start;
   }
 
-  .purchase-row .records-actions .ghost-button {
+  .purchase-row .records-actions .ghost-button,
+  .sales-row .records-actions .ghost-button,
+  .expense-row .records-actions .ghost-button,
+  .general-expense-row .records-actions .ghost-button {
     width: 100%;
+  }
+
+  .receivable-row .records-actions,
+  .payable-row .records-actions {
+    justify-self: start;
+  }
+
+  .brokered-row .records-actions,
+  .stock-consignment-row .records-actions {
+    justify-self: start;
   }
 }
 
@@ -1831,6 +2780,35 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-toggle .new-actions-caret {
+    transition: transform 0.15s ease;
+  }
+
+  .filter-section.filters-open .filter-toggle .new-actions-caret {
+    transform: rotate(180deg);
+  }
+
+  .filter-section .filter-toggle ~ strong,
+  .filter-section .filter-toggle ~ .filter-bar {
+    display: none;
+  }
+
+  .filter-section.filters-open .filter-toggle ~ strong {
+    display: block;
+  }
+
+  .filter-section.filters-open .filter-toggle ~ .filter-bar {
+    display: grid;
+  }
+
   .grouped-record-main {
     grid-template-columns: 1fr;
   }
@@ -2010,8 +2988,390 @@ textarea:focus {
     padding-top: 14px;
   }
 
+  .vehicles-card-shell > .vehicles-actions {
+    padding: 14px 16px 16px;
+    border-top: 1px solid rgba(51, 65, 85, 0.08);
+  }
+
+  .vehicles-card-shell > .vehicles-actions .row-actions-dropdown {
+    position: static;
+    width: 100%;
+  }
+
+  .vehicles-card-shell > .vehicles-actions .row-actions-dropdown > .ghost-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .vehicles-card-shell > .vehicles-actions .row-actions-menu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+
   .finance-inline-value {
     display: grid;
     gap: 2px;
+  }
+}
+
+/* ===== Araç fotoğrafları ===== */
+.vehicles-main {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vehicles-main-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Thumb = konteyner; içinde görüntü butonu (büyütme) + ataç butonu (yönetim). */
+.vehicle-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+}
+
+.vehicle-thumb--sm {
+  width: 52px;
+  height: 52px;
+}
+
+.vehicle-thumb-image {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: zoom-in;
+  background: rgba(15, 23, 42, 0.04);
+  display: block;
+}
+
+.vehicle-thumb--sm .vehicle-thumb-image {
+  border-radius: 12px;
+}
+
+.vehicle-thumb-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Ataç: sağ alt köşe, yönetim modalını açar. */
+.vehicle-thumb-clip {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+}
+
+.vehicle-thumb--sm .vehicle-thumb-clip {
+  width: 22px;
+  height: 22px;
+  right: -5px;
+  bottom: -5px;
+}
+
+.vehicle-thumb-count {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.vehicle-thumb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.vehicle-thumb-empty span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.vehicle-thumb-empty small {
+  font-size: 8.5px;
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.vehicle-thumb-empty:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Mobil kapali kart: thumb solda, geri kalan (metin + ikon) toggle butonu. */
+.record-mobile-summary-toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.record-mobile-summary-toggle .record-mobile-summary-main {
+  flex: 1 1 auto;
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Foto modali: baslik ve "Kapat" sabit; yalnizca galeri alani kayar (ilk satir basligin altinda kesik gorunmesin). */
+.photo-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.photo-modal .modal-header {
+  position: static;
+}
+
+.photo-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.photo-modal-footer {
+  flex: 0 0 auto;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.photo-grid-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+
+.photo-grid-thumb {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.photo-grid-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-grid-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(180, 35, 24, 0.92);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-grid-delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ===== Lightbox ===== */
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 22, 0.92);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 95;
+}
+
+.lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.lightbox-image {
+  max-width: min(1100px, 92vw);
+  max-height: 76vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-nav.prev {
+  left: 10px;
+}
+
+.lightbox-nav.next {
+  right: 10px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-title {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 80px;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.lightbox-footer {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.lightbox-counter {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lightbox-cover-button {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.lightbox-cover-button:disabled {
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: default;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .lightbox-nav {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+}
+
+/* Mobilde fotograf yalnizca kapali kartta gosterilir; acilan alanda (card-body) gizlenir. */
+@media (max-width: 760px) {
+  .vehicles-card-body .vehicle-thumb {
+    display: none;
   }
 }

@@ -10,6 +10,7 @@ const createInitialForm = (): CompleteVehicleSaleRequest => ({
   salePrice: 0,
   saleDate: new Date().toISOString(),
   paymentMethod: 1,
+  notaryRegistryNumber: null,
   counterpartyName: null,
   dueDate: null,
   documentNumber: null,
@@ -45,6 +46,14 @@ function getDateParts(value: string) {
     year: date.getFullYear().toString(),
     month: (date.getMonth() + 1).toString().padStart(2, "0")
   };
+}
+
+function isSaleFinanceMethod(paymentMethod: number) {
+  return paymentMethod === 5 || paymentMethod === 6 || paymentMethod === 7;
+}
+
+function isTradePaymentMethod(paymentMethod: number) {
+  return paymentMethod === 4;
 }
 
 export function SalesPage() {
@@ -209,6 +218,7 @@ export function SalesPage() {
       const payload = {
         ...form,
         salePrice: parsedSalePrice,
+        notaryRegistryNumber: form.notaryRegistryNumber?.trim() || null,
         counterpartyName: requiresFinanceInfo ? form.counterpartyName?.trim() ?? null : null,
         dueDate: requiresFinanceInfo ? form.dueDate : null,
         documentNumber: requiresFinanceInfo ? form.documentNumber?.trim() ?? null : null,
@@ -240,6 +250,7 @@ export function SalesPage() {
       salePrice: sale.salePrice,
       saleDate: sale.soldAt,
       paymentMethod: sale.paymentMethod,
+      notaryRegistryNumber: sale.notaryRegistryNumber,
       counterpartyName: sale.counterpartyName,
       dueDate: sale.dueDate,
       documentNumber: sale.documentNumber,
@@ -335,9 +346,11 @@ export function SalesPage() {
 
           <div className="records-table-head sales-table-head records-table-head-sticky">
             <span>Araç</span>
-            <span>Tarih</span>
-            <span>Tutarlar</span>
-            <span>Sonuç</span>
+            <span>Satış</span>
+            <span>Maliyet</span>
+            <span>Çek / Senet</span>
+            <span>Takas</span>
+            <span>Kâr</span>
             <span>İşlem</span>
           </div>
         </div>
@@ -372,50 +385,61 @@ export function SalesPage() {
                     <div className="records-cell records-main">
                       <strong>{sale.plate}</strong>
                       <span>{sale.vehicleDisplayName}</span>
+                      <small>{`Noter yevmiye no: ${sale.notaryRegistryNumber || "-"}`}</small>
                     </div>
 
-                    <div className="records-cell records-dates">
-                      <div>
-                        <span>Satış</span>
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Satış tarihi</span>
                         <strong>{formatDate(sale.soldAt)}</strong>
+                        <span>Satış tutarı</span>
+                        <strong className="finance-strong">{formatCurrency(sale.salePrice)}</strong>
+                        <span>Ödeme metodu</span>
+                        <strong>{getPaymentMethodLabel(sale.paymentMethod)}</strong>
                       </div>
                     </div>
 
                     <div className="records-cell records-finance">
                       <div className="finance-stack">
-                        <span>Alış</span>
+                        <span>Alış tutarı</span>
                         <strong>{formatCurrency(sale.purchasePrice)}</strong>
-                        <span>Ödeme</span>
-                        <strong>{getPaymentMethodLabel(sale.paymentMethod)}</strong>
-                      </div>
-                      <div className="finance-stack">
                         <span>Masraf</span>
                         <strong>{formatCurrency(sale.totalExpenseCost)}</strong>
-                        <span>Toplam</span>
+                        <span>Toplam maliyet</span>
                         <strong className="finance-strong">{formatCurrency(sale.totalCost)}</strong>
                       </div>
-                      <div className="finance-stack">
-                        <span>Satış</span>
-                        <strong className="finance-strong">{formatCurrency(sale.salePrice)}</strong>
-                      </div>
-                      <div className="finance-stack">
-                        <span>Taraf</span>
-                        <strong>{sale.counterpartyName || "-"}</strong>
-                        <span>Belge</span>
-                        <strong>{sale.documentNumber || "-"}</strong>
-                      </div>
-                      <div className="finance-stack">
-                        <span>Senet planı</span>
-                        <strong>
-                          {sale.installmentCount && sale.installmentIntervalMonths
-                            ? `${sale.installmentCount} taksit / ${sale.installmentIntervalMonths} ay`
-                            : "-"}
-                        </strong>
-                        <span>Takas bedeli</span>
-                        <strong>{sale.tradeAmount ? formatCurrency(sale.tradeAmount) : "-"}</strong>
-                        <span>Takas plakası</span>
-                        <strong>{sale.tradePlate ?? "-"}</strong>
-                      </div>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      {isSaleFinanceMethod(sale.paymentMethod) ? (
+                        <div className="finance-stack">
+                          <span>Taraf</span>
+                          <strong>{sale.counterpartyName || "-"}</strong>
+                          <span>Belge numarası</span>
+                          <strong>{sale.documentNumber || "-"}</strong>
+                          <span>Belge vadesi</span>
+                          <strong>{sale.dueDate ? formatDate(sale.dueDate) : "-"}</strong>
+                        </div>
+                      ) : (
+                        <div className="finance-stack finance-stack-muted">
+                          <span>Bu işlem için çek / senet bilgisi yok</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      {isTradePaymentMethod(sale.paymentMethod) ? (
+                        <div className="finance-stack">
+                          <span>Takas plakası</span>
+                          <strong>{sale.tradePlate ?? "-"}</strong>
+                          <span>Takas bedeli</span>
+                          <strong>{sale.tradeAmount ? formatCurrency(sale.tradeAmount) : "-"}</strong>
+                        </div>
+                      ) : (
+                        <div className="finance-stack finance-stack-muted">
+                          <span>Bu işlem için takas bilgisi yok</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="records-cell records-finance">
@@ -510,6 +534,14 @@ export function SalesPage() {
                   <option value={6}>Senet</option>
                   <option value={7}>Vadeli</option>
                 </select>
+              </label>
+              <label>
+                <span>Noter yevmiye no</span>
+                <input
+                  value={form.notaryRegistryNumber ?? ""}
+                  placeholder="Orn. 2026/1458"
+                  onChange={(event) => setForm((current) => ({ ...current, notaryRegistryNumber: event.target.value || null }))}
+                />
               </label>
               {form.paymentMethod === 4 ? (
                 <>

@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<TenantSetting> TenantSettings => Set<TenantSetting>();
+    public DbSet<TenantActivity> TenantActivities => Set<TenantActivity>();
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
@@ -45,6 +46,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<VehicleTrade> VehicleTrades => Set<VehicleTrade>();
     public DbSet<VehicleExpense> VehicleExpenses => Set<VehicleExpense>();
     public DbSet<VehicleAttachment> VehicleAttachments => Set<VehicleAttachment>();
+    public DbSet<VehiclePhoto> VehiclePhotos => Set<VehiclePhoto>();
 
     public DbSet<IncomeCategory> IncomeCategories => Set<IncomeCategory>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
@@ -65,7 +67,12 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
         ConfigureGlobalFilters(modelBuilder);
 
-        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        // E-posta tenant başına benzersizdir (global değil); böylece aynı e-posta farklı tenant'larda kullanılabilir.
+        // Silinmiş (soft-delete) kullanıcılar hariç tutulur, böylece aynı tenant'ta silinen e-posta yeniden kullanılabilir.
+        modelBuilder.Entity<User>()
+            .HasIndex(u => new { u.TenantId, u.Email })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
         modelBuilder.Entity<Tenant>().HasIndex(t => t.Identifier).IsUnique();
         modelBuilder.Entity<VehicleSegment>().HasIndex(segment => new { segment.TenantId, segment.Name }).IsUnique();
         modelBuilder.Entity<VehicleBrand>().HasIndex(brand => new { brand.TenantId, brand.Name }).IsUnique();
@@ -110,6 +117,15 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .WithMany(segment => segment.Models)
             .HasForeignKey(model => model.VehicleSegmentId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<VehiclePhoto>()
+            .HasOne(photo => photo.Vehicle)
+            .WithMany(vehicle => vehicle.Photos)
+            .HasForeignKey(photo => photo.VehicleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VehiclePhoto>()
+            .HasIndex(photo => new { photo.TenantId, photo.VehicleId, photo.SortOrder });
     }
 
     private void ConfigureGlobalFilters(ModelBuilder modelBuilder)

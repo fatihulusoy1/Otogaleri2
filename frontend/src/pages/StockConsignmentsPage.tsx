@@ -62,6 +62,7 @@ export function StockConsignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!session) {
@@ -147,6 +148,10 @@ export function StockConsignmentsPage() {
   function handleCurrencyInput(value: string, setter: (value: string) => void) {
     const digits = value.replace(/\D/g, "");
     setter(digits ? formatCurrency(Number(digits)) : "");
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -313,88 +318,111 @@ export function StockConsignmentsPage() {
       {error && !isModalOpen && !isSaleModalOpen ? <div className="alert error">{error}</div> : null}
 
       <article className="panel">
-        <div className="panel-heading">
-          <h2>Konsinye stok listesi</h2>
-          <p>{loading ? "Liste hazirlaniyor..." : `${records.length} kayit var.`}</p>
-        </div>
+        <div className="records-sticky-stack">
+          <div className="panel-heading records-heading">
+            <h2>Konsinye stok listesi</h2>
+            <p>{loading ? "Liste hazirlaniyor..." : `${records.length} kayit var.`}</p>
+          </div>
 
-        <div className="records-table">
-          <div className="records-table-head stock-consignment-table-head">
+          <div className="records-table-head stock-consignment-table-head records-table-head-sticky">
             <span>Arac</span>
             <span>Sahip ve tarih</span>
             <span>Tutarlar</span>
             <span>Durum</span>
             <span>Islem</span>
           </div>
+        </div>
 
+        <div className="records-table">
           <div className="records-table-body">
-            {records.map((record) => (
-              <article key={record.id} className="records-row stock-consignment-row">
-                <div className="records-cell records-main">
-                  <strong>{record.plate}</strong>
-                  <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
-                  <small>{record.description || "Aciklama girilmemis."}</small>
-                </div>
+            {records.map((record) => {
+              const isExpanded = expandedIds.includes(record.id);
 
-                <div className="records-cell records-dates">
-                  <div>
-                    <span>Sahip</span>
-                    <strong>{record.ownerName}</strong>
-                  </div>
-                  <div>
-                    <span>Giris</span>
-                    <strong>{formatDate(record.consignmentDate)}</strong>
-                  </div>
-                </div>
-
-                <div className="records-cell records-finance">
-                  <div className="finance-stack">
-                    <span>Baz</span>
-                    <strong>{formatCurrency(record.basePrice)}</strong>
-                    <span>Hedef</span>
-                    <strong>{record.expectedSalePrice ? formatCurrency(record.expectedSalePrice) : "-"}</strong>
-                  </div>
-                  <div className="finance-stack">
-                    <span>Satis</span>
-                    <strong className="finance-strong">{record.salePrice ? formatCurrency(record.salePrice) : "-"}</strong>
-                    <span>Komisyon</span>
-                    <strong className="finance-strong">
-                      {record.commissionAmount ? formatCurrency(record.commissionAmount) : record.commissionRate ? formatPercent(record.commissionRate) : "-"}
-                    </strong>
-                  </div>
-                  <div className="finance-stack">
-                    <span>Sahibe net</span>
-                    <strong className="finance-strong">{record.netAmountToOwner ? formatCurrency(record.netAmountToOwner) : "-"}</strong>
-                    <span>Satis tarihi</span>
-                    <strong>{record.saleDate ? formatDate(record.saleDate) : "-"}</strong>
-                  </div>
-                </div>
-
-                <div className="records-cell">
-                  <span className={`status-badge ${record.status === 3 ? "status-success" : "status-warning"}`}>
-                    {record.status === 3 ? "Satildi" : "Stokta"}
-                  </span>
-                </div>
-
-                <div className="records-cell records-actions">
-                  <button type="button" className="ghost-button dark" onClick={() => handleEdit(record)}>
-                    Duzenle
+              return (
+                <article key={record.id} className={`records-row stock-consignment-row record-card-shell ${isExpanded ? "expanded" : ""}`}>
+                  <button
+                    type="button"
+                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
+                    onClick={() => toggleExpanded(record.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="record-mobile-summary-main">
+                      <span className={`status-badge ${record.status === 3 ? "status-success" : "status-warning"}`}>
+                        {record.status === 3 ? "Satildi" : "Stokta"}
+                      </span>
+                      <strong>{record.plate}</strong>
+                      <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
+                      <span>
+                        {formatDate(record.consignmentDate)} · {formatCurrency(record.basePrice)}
+                      </span>
+                    </div>
+                    <span className="record-mobile-summary-icon" aria-hidden="true">
+                      {isExpanded ? "−" : "+"}
+                    </span>
                   </button>
-                  <button type="button" className="ghost-button dark" onClick={() => openSaleModal(record)}>
-                    {record.status === 3 ? "Satisi duzenle" : "Satis yap"}
-                  </button>
-                  {record.status === 3 ? (
-                    <button type="button" className="ghost-button danger" onClick={() => setPendingDeleteSale(record)}>
-                      Satisi sil
-                    </button>
-                  ) : (
-                    <button type="button" className="ghost-button danger" onClick={() => setPendingDelete(record)}>
-                      Sil
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+
+                  <div className="records-card-body">
+                    <div className="records-cell records-main">
+                      <strong>{record.plate}</strong>
+                      <span>{[record.segment, record.brand, record.model].filter(Boolean).join(" / ")}</span>
+                      <small>{record.description || "Aciklama girilmemis."}</small>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Sahip</span>
+                        <strong>{record.ownerName}</strong>
+                        <span>Giris</span>
+                        <strong>{formatDate(record.consignmentDate)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Baz</span>
+                        <strong>{formatCurrency(record.basePrice)}</strong>
+                        <span>Hedef</span>
+                        <strong>{record.expectedSalePrice ? formatCurrency(record.expectedSalePrice) : "-"}</strong>
+                        <span>Satis</span>
+                        <strong className="finance-strong">{record.salePrice ? formatCurrency(record.salePrice) : "-"}</strong>
+                        <span>Komisyon</span>
+                        <strong className="finance-strong">
+                          {record.commissionAmount ? formatCurrency(record.commissionAmount) : record.commissionRate ? formatPercent(record.commissionRate) : "-"}
+                        </strong>
+                        <span>Sahibe net</span>
+                        <strong className="finance-strong">{record.netAmountToOwner ? formatCurrency(record.netAmountToOwner) : "-"}</strong>
+                        <span>Satis tarihi</span>
+                        <strong>{record.saleDate ? formatDate(record.saleDate) : "-"}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-status">
+                      <span className={`status-badge ${record.status === 3 ? "status-success" : "status-warning"}`}>
+                        {record.status === 3 ? "Satildi" : "Stokta"}
+                      </span>
+                    </div>
+
+                    <div className="records-cell records-actions">
+                      <button type="button" className="ghost-button dark" onClick={() => handleEdit(record)}>
+                        Duzenle
+                      </button>
+                      <button type="button" className="ghost-button dark" onClick={() => openSaleModal(record)}>
+                        {record.status === 3 ? "Satisi duzenle" : "Satis yap"}
+                      </button>
+                      {record.status === 3 ? (
+                        <button type="button" className="ghost-button danger" onClick={() => setPendingDeleteSale(record)}>
+                          Satisi sil
+                        </button>
+                      ) : (
+                        <button type="button" className="ghost-button danger" onClick={() => setPendingDelete(record)}>
+                          Sil
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
 
             {!loading && records.length === 0 ? <div className="empty-panel">Henuz konsinye stok kaydi yok.</div> : null}
           </div>

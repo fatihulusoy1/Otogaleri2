@@ -38,7 +38,13 @@ public class JwtService : IJwtService
             claims.Add(new Claim("permission", permission));
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "super_secret_key_1234567890123456"));
+        var configuredKey = _configuration["Jwt:Key"];
+        if (string.IsNullOrWhiteSpace(configuredKey) || configuredKey.Length < 32)
+        {
+            throw new InvalidOperationException("Jwt:Key yapılandırılmamış veya çok kısa (en az 32 karakter olmalı).");
+        }
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"] ?? "60"));
 

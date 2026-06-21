@@ -1,12 +1,28 @@
 import type {
   AdminCatalogLookups,
+  AdminSubscriptionPlan,
   AdminTenant,
   AdminUser,
+  CreateTenantRequest,
+  CreateUserRequest,
+  UpdateTenantRequest,
+  UpdateUserRequest,
   BrokeredConsignment,
   StockConsignment,
   ReceivablePayable,
   ExpenseCategory,
   Transaction,
+  SubscriptionPlanPublic,
+  SubscriptionStatus,
+  BillingCycle,
+  Profile,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  TenantUser,
+  CreateTenantUserRequest,
+  UpdateTenantUserRequest,
+  PlanRequest,
+  TenantActivity,
 } from "../types";
 import type {
   AuthResponse,
@@ -23,6 +39,7 @@ import type {
   RegisterRequest,
   UpdateBrokeredConsignmentRequest,
   Vehicle,
+  VehiclePhoto,
   VehicleExpense,
   VehicleSale,
   UpdatePurchaseRequest,
@@ -35,20 +52,17 @@ import type {
 } from "../types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
-const unauthorizedEventName = "autogallery:unauthorized";
 
-async function readApiError(response: Response): Promise<string> {
-  try {
-    const payload = await response.json();
-    if (typeof payload === "string") {
-      return payload;
-    }
-
-    return payload.title ?? payload.message ?? payload.detail ?? "Bir hata oluştu.";
-  } catch {
-    return "Bir hata oluştu.";
+// Veritabanindaki FileUrl ya mutlak (R2) ya da goreli ("/uploads/..") gelir.
+// Mutlaksa oldugu gibi kullan, goreli ise API tabani ile birlestir (dev'de vite proxy /uploads'i yonlendirir).
+export function resolveFileUrl(fileUrl: string): string {
+  if (/^https?:\/\//i.test(fileUrl)) {
+    return fileUrl;
   }
+  return `${apiBaseUrl}${fileUrl}`;
 }
+const unauthorizedEventName = "autogallery:unauthorized";
+const limitExceededEventName = "autogallery:limit-exceeded";
 
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -66,7 +80,24 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
       window.dispatchEvent(new CustomEvent(unauthorizedEventName));
     }
 
-    throw new Error(await readApiError(response));
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    const data = payload as { code?: string; title?: string; message?: string; detail?: string } | string | null;
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.title ?? data?.message ?? data?.detail ?? "Bir hata oluştu.";
+
+    if (data && typeof data === "object" && data.code === "limit_exceeded" && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(limitExceededEventName, { detail: message }));
+    }
+
+    throw new Error(message);
   }
 
   if (response.status === 204) {
@@ -88,6 +119,90 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     });
+  },
+  verifyTwoFactor(email: string, code: string) {
+    return request<AuthResponse>("/api/Auth/verify-2fa", {
+      method: "POST",
+      body: JSON.stringify({ email, code })
+    });
+  },
+  getEmailEnabled() {
+    return request<{ enabled: boolean }>("/api/Auth/email-enabled");
+  },
+  forgotPassword(email: string) {
+    return request<void>("/api/Auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    });
+  },
+  resetPassword(token: string, newPassword: string) {
+    return request<void>("/api/Auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword })
+    });
+  },
+  setTwoFactor(token: string, enabled: boolean) {
+    return request<Profile>("/api/Auth/two-factor", {
+      method: "POST",
+      body: JSON.stringify({ enabled })
+    }, token);
+  },
+  getProfile(token: string) {
+    return request<Profile>("/api/Auth/me", undefined, token);
+  },
+  updateProfile(token: string, payload: UpdateProfileRequest) {
+    return request<Profile>("/api/Auth/me", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  changePassword(token: string, payload: ChangePasswordRequest) {
+    return request<void>("/api/Auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  tenantGetUsers(token: string) {
+    return request<TenantUser[]>("/api/tenant/users", undefined, token);
+  },
+  tenantCreateUser(token: string, payload: CreateTenantUserRequest) {
+    return request<TenantUser>("/api/tenant/users", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  tenantUpdateUser(token: string, userId: string, payload: UpdateTenantUserRequest) {
+    return request<TenantUser>(`/api/tenant/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  tenantSetUserStatus(token: string, userId: string, isActive: boolean) {
+    return request<void>(`/api/tenant/users/${userId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive })
+    }, token);
+  },
+  tenantSetUserPassword(token: string, userId: string, password: string) {
+    return request<void>(`/api/tenant/users/${userId}/password`, {
+      method: "POST",
+      body: JSON.stringify({ password })
+    }, token);
+  },
+  tenantDeleteUser(token: string, userId: string) {
+    return request<void>(`/api/tenant/users/${userId}`, { method: "DELETE" }, token);
+  },
+  getPublicPlans() {
+    return request<SubscriptionPlanPublic[]>("/api/subscription/plans");
+  },
+  getSubscription(token: string) {
+    return request<SubscriptionStatus>("/api/subscription", undefined, token);
+  },
+  checkoutSubscription(token: string, planId: string, billingCycle: BillingCycle) {
+    return request<SubscriptionStatus>("/api/subscription/checkout", {
+      method: "POST",
+      body: JSON.stringify({ planId, billingCycle })
+    }, token);
   },
   getDashboard(token: string) {
     return request<DashboardSummary>("/api/Dashboard/summary", undefined, token);
@@ -150,6 +265,43 @@ export const api = {
   },
   deleteExpense(token: string, expenseId: string) {
     return request<void>(`/api/Vehicles/expenses/${expenseId}`, { method: "DELETE" }, token);
+  },
+  getVehiclePhotos(token: string, vehicleId: string) {
+    return request<VehiclePhoto[]>(`/api/Vehicles/${vehicleId}/photos`, undefined, token);
+  },
+  async uploadVehiclePhotos(token: string, vehicleId: string, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file, file.name));
+
+    // FormData icin Content-Type'i tarayici boundary ile kendisi ayarlamali; request() JSON zorladigi icin burada elle cagiriyoruz.
+    const response = await fetch(`${apiBaseUrl}/api/Vehicles/${vehicleId}/photos`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(unauthorizedEventName));
+      }
+      let message = "Fotograflar yuklenemedi.";
+      try {
+        const payload = (await response.json()) as { title?: string; message?: string; detail?: string };
+        message = payload?.title ?? payload?.message ?? payload?.detail ?? message;
+      } catch {
+        // ignore
+      }
+      throw new Error(message);
+    }
+
+    return (await response.json()) as VehiclePhoto[];
+  },
+  deleteVehiclePhoto(token: string, photoId: string) {
+    return request<void>(`/api/Vehicles/photos/${photoId}`, { method: "DELETE" }, token);
+  },
+  setVehiclePhotoCover(token: string, photoId: string) {
+    return request<VehiclePhoto[]>(`/api/Vehicles/photos/${photoId}/cover`, { method: "PUT" }, token);
   },
   getSales(token: string) {
     return request<VehicleSale[]>("/api/Vehicles/sales", undefined, token);
@@ -227,9 +379,69 @@ export const api = {
   adminGetTenants(token: string) {
     return request<AdminTenant[]>("/api/admin/tenants", undefined, token);
   },
+  adminGetSubscriptionPlans(token: string) {
+    return request<AdminSubscriptionPlan[]>("/api/admin/subscription-plans", undefined, token);
+  },
+  adminCreatePlan(token: string, payload: PlanRequest) {
+    return request<AdminSubscriptionPlan>("/api/admin/subscription-plans", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminUpdatePlan(token: string, planId: string, payload: PlanRequest) {
+    return request<AdminSubscriptionPlan>(`/api/admin/subscription-plans/${planId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminDeletePlan(token: string, planId: string) {
+    return request<void>(`/api/admin/subscription-plans/${planId}`, { method: "DELETE" }, token);
+  },
+  tenantGetActivities(token: string) {
+    return request<TenantActivity[]>("/api/tenant/activities", undefined, token);
+  },
   adminGetUsers(token: string, tenantId?: string) {
     const suffix = tenantId ? `?tenantId=${tenantId}` : "";
     return request<AdminUser[]>(`/api/admin/users${suffix}`, undefined, token);
+  },
+  adminCreateTenant(token: string, payload: CreateTenantRequest) {
+    return request<AdminTenant>("/api/admin/tenants", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminUpdateTenant(token: string, tenantId: string, payload: UpdateTenantRequest) {
+    return request<AdminTenant>(`/api/admin/tenants/${tenantId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminDeleteTenant(token: string, tenantId: string) {
+    return request<void>(`/api/admin/tenants/${tenantId}`, { method: "DELETE" }, token);
+  },
+  adminGetTenantActivities(token: string, tenantId: string) {
+    return request<TenantActivity[]>(`/api/admin/tenants/${tenantId}/activities`, undefined, token);
+  },
+  adminCreateUser(token: string, payload: CreateUserRequest) {
+    return request<AdminUser>("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminUpdateUser(token: string, userId: string, payload: UpdateUserRequest) {
+    return request<AdminUser>(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }, token);
+  },
+  adminDeleteUser(token: string, userId: string) {
+    return request<void>(`/api/admin/users/${userId}`, { method: "DELETE" }, token);
+  },
+  adminSetUserPassword(token: string, userId: string, password: string) {
+    return request<void>(`/api/admin/users/${userId}/password`, {
+      method: "POST",
+      body: JSON.stringify({ password })
+    }, token);
   },
   adminUpdateTenantStatus(token: string, tenantId: string, isActive: boolean) {
     return request<void>(`/api/admin/tenants/${tenantId}/status`, {
@@ -384,4 +596,4 @@ export const api = {
   }
 };
 
-export { unauthorizedEventName };
+export { unauthorizedEventName, limitExceededEventName };

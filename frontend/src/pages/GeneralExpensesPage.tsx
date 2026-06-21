@@ -36,6 +36,7 @@ export function GeneralExpensesPage() {
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [pendingDeleteExpense, setPendingDeleteExpense] = useState<Transaction | null>(null);
   const [error, setError] = useState("");
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   async function loadData() {
     if (!session) {
@@ -86,6 +87,10 @@ export function GeneralExpensesPage() {
   function handleCurrencyInput(value: string) {
     const digits = value.replace(/\D/g, "");
     setAmountInput(digits ? formatCurrency(Number(digits)) : "");
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -199,55 +204,87 @@ export function GeneralExpensesPage() {
       {error && !isModalOpen ? <div className="alert error">{error}</div> : null}
 
       <article className="panel">
-        <div className="panel-heading">
-          <h2>Diger gider gecmisi</h2>
-          <p>{loading ? "Liste hazirlaniyor..." : `${expenses.length} genel gider kaydi var.`}</p>
-        </div>
+        <div className="records-sticky-stack">
+          <div className="panel-heading records-heading">
+            <h2>Diger gider gecmisi</h2>
+            <p>{loading ? "Liste hazirlaniyor..." : `${expenses.length} genel gider kaydi var.`}</p>
+          </div>
 
-        <div className="records-table">
-          <div className="records-table-head general-expense-table-head">
+          <div className="records-table-head general-expense-table-head records-table-head-sticky">
             <span>Kategori</span>
             <span>Aciklama</span>
             <span>Tutar ve tarih</span>
             <span>Odeme</span>
             <span>Islem</span>
           </div>
+        </div>
 
+        <div className="records-table">
           <div className="records-table-body">
-            {expenses.map((expense) => (
-              <article key={expense.id} className="records-row general-expense-row">
-                <div className="records-cell records-main">
-                  <strong>{expense.categoryName ?? "Kategorisiz"}</strong>
-                  <small>Genel operasyon gideri</small>
-                </div>
+            {expenses.map((expense) => {
+              const isExpanded = expandedIds.includes(expense.id);
 
-                <div className="records-cell records-main">
-                  <strong>{expense.description}</strong>
-                </div>
+              return (
+                <article key={expense.id} className={`records-row general-expense-row record-card-shell ${isExpanded ? "expanded" : ""}`}>
+                  <button
+                    type="button"
+                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
+                    onClick={() => toggleExpanded(expense.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="record-mobile-summary-main">
+                      <span className="status-badge status-warning">{expense.categoryName ?? "Genel gider"}</span>
+                      <strong>{expense.description}</strong>
+                      <span>
+                        {formatDate(expense.transactionDate)} · {formatCurrency(expense.amount)}
+                      </span>
+                    </div>
+                    <span className="record-mobile-summary-icon" aria-hidden="true">
+                      {isExpanded ? "−" : "+"}
+                    </span>
+                  </button>
 
-                <div className="records-cell records-finance">
-                  <div className="finance-stack">
-                    <span>Tutar</span>
-                    <strong className="finance-strong">{formatCurrency(expense.amount)}</strong>
-                    <span>Tarih</span>
-                    <strong>{formatDate(expense.transactionDate)}</strong>
+                  <div className="records-card-body">
+                    <div className="records-cell records-main">
+                      <strong>{expense.categoryName ?? "Kategorisiz"}</strong>
+                      <small>Genel operasyon gideri</small>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Aciklama</span>
+                        <strong>{expense.description || "-"}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Tutar</span>
+                        <strong className="finance-strong">{formatCurrency(expense.amount)}</strong>
+                        <span>Tarih</span>
+                        <strong>{formatDate(expense.transactionDate)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Odeme metodu</span>
+                        <strong>{getPaymentMethodLabel(expense.paymentMethod)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="records-cell records-actions">
+                      <button type="button" className="ghost-button dark" onClick={() => handleEdit(expense)}>
+                        Duzenle
+                      </button>
+                      <button type="button" className="ghost-button danger" onClick={() => requestDeleteExpense(expense)}>
+                        Sil
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="records-cell records-main">
-                  <strong>{getPaymentMethodLabel(expense.paymentMethod)}</strong>
-                </div>
-
-                <div className="records-cell records-actions">
-                  <button type="button" className="ghost-button dark" onClick={() => handleEdit(expense)}>
-                    Duzenle
-                  </button>
-                  <button type="button" className="ghost-button danger" onClick={() => requestDeleteExpense(expense)}>
-                    Sil
-                  </button>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
 
             {!loading && expenses.length === 0 ? (
               <div className="empty-panel">Henuz genel gider girilmemis.</div>

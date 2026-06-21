@@ -11,10 +11,12 @@ namespace AutoGallerySaaS.Api.Controllers;
 public class VehiclesController : ControllerBase
 {
     private readonly IVehicleService _vehicleService;
+    private readonly IVehiclePhotoService _vehiclePhotoService;
 
-    public VehiclesController(IVehicleService vehicleService)
+    public VehiclesController(IVehicleService vehicleService, IVehiclePhotoService vehiclePhotoService)
     {
         _vehicleService = vehicleService;
+        _vehiclePhotoService = vehiclePhotoService;
     }
 
     [HttpGet("lookups")]
@@ -122,6 +124,42 @@ public class VehiclesController : ControllerBase
     {
         await _vehicleService.DeleteExpenseAsync(id);
         return NoContent();
+    }
+
+    [HttpGet("{id}/photos")]
+    public async Task<ActionResult<List<VehiclePhotoDto>>> GetPhotos(Guid id)
+    {
+        return Ok(await _vehiclePhotoService.GetByVehicleAsync(id));
+    }
+
+    [HttpPost("{id}/photos")]
+    [RequestSizeLimit(52_428_800)] // 50 MB: birden fazla fotograf icin
+    public async Task<ActionResult<List<VehiclePhotoDto>>> UploadPhotos(Guid id, [FromForm] List<IFormFile> files)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return BadRequest(new { message = "Yuklenecek fotograf bulunamadi." });
+        }
+
+        var inputs = files
+            .Select(file => new PhotoUploadInput(file.OpenReadStream(), file.FileName, file.ContentType))
+            .ToList();
+
+        var photos = await _vehiclePhotoService.UploadAsync(id, inputs);
+        return Ok(photos);
+    }
+
+    [HttpDelete("photos/{photoId}")]
+    public async Task<IActionResult> DeletePhoto(Guid photoId)
+    {
+        await _vehiclePhotoService.DeleteAsync(photoId);
+        return NoContent();
+    }
+
+    [HttpPut("photos/{photoId}/cover")]
+    public async Task<ActionResult<List<VehiclePhotoDto>>> SetPhotoCover(Guid photoId)
+    {
+        return Ok(await _vehiclePhotoService.SetCoverAsync(photoId));
     }
 
     [HttpPut("{id}")]

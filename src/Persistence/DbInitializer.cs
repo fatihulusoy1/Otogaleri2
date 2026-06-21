@@ -162,6 +162,9 @@ public static class DbInitializer
             ALTER TABLE IF EXISTS "Vehicles" ADD COLUMN IF NOT EXISTS "SaleDate" timestamp with time zone NULL;
             """);
         await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Vehicles" ADD COLUMN IF NOT EXISTS "SaleNotaryRegistryNumber" text NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
             ALTER TABLE IF EXISTS "Vehicles" ADD COLUMN IF NOT EXISTS "SaleTradePlate" text NULL;
             """);
         await context.Database.ExecuteSqlRawAsync("""
@@ -354,6 +357,31 @@ public static class DbInitializer
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_GeneralExpenseCategories_TenantId_Name" ON "GeneralExpenseCategories" ("TenantId", "Name");
             """);
         await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS "VehiclePhotos" (
+                "Id" uuid NOT NULL PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "VehicleId" uuid NOT NULL,
+                "FileName" text NOT NULL,
+                "FileUrl" text NOT NULL,
+                "FileSize" bigint NOT NULL,
+                "ContentType" text NOT NULL,
+                "SortOrder" integer NOT NULL DEFAULT 0,
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "CreatedBy" text NULL,
+                "UpdatedAt" timestamp with time zone NULL,
+                "UpdatedBy" text NULL,
+                "DeletedAt" timestamp with time zone NULL,
+                "DeletedBy" text NULL,
+                "IsDeleted" boolean NOT NULL DEFAULT FALSE,
+                CONSTRAINT "FK_VehiclePhotos_Vehicles_VehicleId" FOREIGN KEY ("VehicleId")
+                    REFERENCES "Vehicles" ("Id") ON DELETE CASCADE
+            );
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE INDEX IF NOT EXISTS "IX_VehiclePhotos_TenantId_VehicleId_SortOrder"
+            ON "VehiclePhotos" ("TenantId", "VehicleId", "SortOrder");
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
             CREATE TABLE IF NOT EXISTS "ReceivablePayables" (
                 "Id" uuid NOT NULL PRIMARY KEY,
                 "TenantId" uuid NOT NULL,
@@ -385,6 +413,66 @@ public static class DbInitializer
             """);
         await context.Database.ExecuteSqlRawAsync("""
             ALTER TABLE IF EXISTS "ReceivablePayables" ADD COLUMN IF NOT EXISTS "LastSettlementDate" timestamp with time zone NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Tenants" ADD COLUMN IF NOT EXISTS "EffectiveMaxUsers" integer NOT NULL DEFAULT 0;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Tenants" ADD COLUMN IF NOT EXISTS "EffectiveMaxVehicles" integer NOT NULL DEFAULT 0;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            UPDATE "Tenants" AS t
+            SET "EffectiveMaxUsers" = p."MaxUsers",
+                "EffectiveMaxVehicles" = p."MaxVehicles"
+            FROM "SubscriptionPlans" AS p
+            WHERE t."SubscriptionPlanId" = p."Id"
+              AND t."EffectiveMaxUsers" = 0
+              AND t."EffectiveMaxVehicles" = 0;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS "TenantActivities" (
+                "Id" uuid NOT NULL PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "Type" integer NOT NULL,
+                "Description" text NOT NULL,
+                "Amount" numeric NULL,
+                "PerformedBy" text NULL,
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "CreatedBy" text NULL,
+                "UpdatedAt" timestamp with time zone NULL,
+                "UpdatedBy" text NULL
+            );
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE INDEX IF NOT EXISTS "IX_TenantActivities_TenantId_CreatedAt"
+            ON "TenantActivities" ("TenantId", "CreatedAt");
+            """);
+        // E-posta benzersizliğini global'den tenant-bazlıya çevir (silinmiş kullanıcılar hariç).
+        await context.Database.ExecuteSqlRawAsync("""
+            DROP INDEX IF EXISTS "IX_Users_Email";
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_TenantId_Email"
+            ON "Users" ("TenantId", "Email")
+            WHERE "IsDeleted" = false;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "LastLoginAt" timestamp with time zone NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "TwoFactorEnabled" boolean NOT NULL DEFAULT FALSE;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "TwoFactorCodeHash" text NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "TwoFactorCodeExpiresAt" timestamp with time zone NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "PasswordResetTokenHash" text NULL;
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "Users" ADD COLUMN IF NOT EXISTS "PasswordResetTokenExpiresAt" timestamp with time zone NULL;
             """);
     }
 

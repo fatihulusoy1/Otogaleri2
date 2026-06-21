@@ -14,8 +14,10 @@ const storageKey = "autogallery.session";
 interface AuthContextValue {
   session: AuthResponse | null;
   isAuthenticated: boolean;
-  login: (payload: LoginRequest) => Promise<void>;
+  login: (payload: LoginRequest) => Promise<AuthResponse>;
+  verifyTwoFactor: (email: string, code: string) => Promise<void>;
   register: (payload: RegisterRequest) => Promise<void>;
+  updateSession: (patch: Partial<AuthResponse>) => void;
   logout: () => void;
 }
 
@@ -78,11 +80,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated: Boolean(session?.token),
       async login(payload) {
         const response = await api.login(payload);
+        if (!response.requiresTwoFactor) {
+          persistSession(response);
+        }
+        return response;
+      },
+      async verifyTwoFactor(email, code) {
+        const response = await api.verifyTwoFactor(email, code);
         persistSession(response);
       },
       async register(payload) {
         const response = await api.register(payload);
         persistSession(response);
+      },
+      updateSession(patch) {
+        setSession((current) => {
+          if (!current) {
+            return current;
+          }
+          const next = { ...current, ...patch };
+          localStorage.setItem(storageKey, JSON.stringify(next));
+          return next;
+        });
       },
       logout() {
         persistSession(null);

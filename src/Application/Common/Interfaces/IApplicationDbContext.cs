@@ -12,6 +12,7 @@ public interface IApplicationDbContext
     DbSet<Tenant> Tenants { get; }
     DbSet<SubscriptionPlan> SubscriptionPlans { get; }
     DbSet<TenantSetting> TenantSettings { get; }
+    DbSet<TenantActivity> TenantActivities { get; }
 
     DbSet<User> Users { get; }
     DbSet<Role> Roles { get; }
@@ -27,6 +28,7 @@ public interface IApplicationDbContext
     DbSet<VehicleTrade> VehicleTrades { get; }
     DbSet<VehicleExpense> VehicleExpenses { get; }
     DbSet<VehicleAttachment> VehicleAttachments { get; }
+    DbSet<VehiclePhoto> VehiclePhotos { get; }
 
     DbSet<IncomeCategory> IncomeCategories { get; }
     DbSet<ExpenseCategory> ExpenseCategories { get; }

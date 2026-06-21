@@ -42,6 +42,37 @@ function getRemainingDueLabel(item: ReceivablePayable): string {
   return `${Math.abs(diffDays)} gün geçti`;
 }
 
+function getRemainingDueTone(item: ReceivablePayable): "" | "warning" | "danger" {
+  if (item.status !== 1 && item.status !== 2 && item.status !== 4) {
+    return "";
+  }
+
+  if (!item.dueDate) {
+    return "";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(item.dueDate);
+
+  if (Number.isNaN(due.getTime())) {
+    return "";
+  }
+
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return "danger";
+  }
+
+  if (diffDays <= 7) {
+    return "warning";
+  }
+
+  return "";
+}
+
 function toStatusClass(status: number): string {
   switch (status) {
     case 3:
@@ -98,6 +129,8 @@ export function PayablesPage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
+  const [plateFilter, setPlateFilter] = useState("");
   const [error, setError] = useState("");
   const [partialTarget, setPartialTarget] = useState<ReceivablePayable | null>(null);
   const [settleTarget, setSettleTarget] = useState<ReceivablePayable | null>(null);
@@ -127,10 +160,18 @@ export function PayablesPage() {
     void loadItems();
   }, [session]);
 
-  const filteredItems = useMemo(
-    () => items.filter((item) => !statusFilter || item.status.toString() === statusFilter),
-    [items, statusFilter]
-  );
+  const filteredItems = useMemo(() => {
+    const normalizedName = nameFilter.trim().toLocaleLowerCase("tr-TR");
+    const normalizedPlate = plateFilter.trim().toLocaleLowerCase("tr-TR");
+
+    return items.filter((item) => {
+      const matchesStatus = !statusFilter || item.status.toString() === statusFilter;
+      const matchesName = !normalizedName || item.counterpartyName.toLocaleLowerCase("tr-TR").includes(normalizedName);
+      const matchesPlate = !normalizedPlate || (item.plate ?? "").toLocaleLowerCase("tr-TR").includes(normalizedPlate);
+
+      return matchesStatus && matchesName && matchesPlate;
+    });
+  }, [items, statusFilter, nameFilter, plateFilter]);
 
   function toggleExpanded(id: string) {
     setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -239,48 +280,60 @@ export function PayablesPage() {
       />
 
       <article className="panel">
-        <div className="panel-heading">
-          <h2>Açık ve kapanan borçlar</h2>
-          <p>{loading ? "Liste hazırlanıyor..." : `${filteredItems.length} kayıt gösteriliyor.`}</p>
-        </div>
+        <div className="records-sticky-stack">
+          <div className="panel-heading records-heading">
+            <h2>Açık ve kapanan borçlar</h2>
+            <p>{loading ? "Liste hazırlanıyor..." : `${filteredItems.length} kayıt gösteriliyor.`}</p>
+          </div>
 
-        {error ? <div className="alert error">{error}</div> : null}
+          {error ? <div className="alert error">{error}</div> : null}
 
-        <div className="filter-bar">
-          <label>
-            <span>Durum</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">Tüm durumlar</option>
-              <option value="1">Açık</option>
-              <option value="2">Kısmen ödendi</option>
-              <option value="3">Kapandı</option>
-              <option value="4">Gecikmiş</option>
-            </select>
-          </label>
-        </div>
+          <div className="filter-bar records-filter-bar">
+            <label>
+              <span>Durum</span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="">Tüm durumlar</option>
+                <option value="1">Açık</option>
+                <option value="2">Kısmen ödendi</option>
+                <option value="3">Kapandı</option>
+                <option value="4">Gecikmiş</option>
+              </select>
+            </label>
 
-        <div className="vehicles-table">
-          <div className="vehicles-table-head debt-table-head">
+            <label>
+              <span>Kişi adı</span>
+              <input value={nameFilter} placeholder="Satıcı adına göre ara" onChange={(event) => setNameFilter(event.target.value)} />
+            </label>
+
+            <label>
+              <span>Araç plakası</span>
+              <input value={plateFilter} placeholder="Plaka ile ara" onChange={(event) => setPlateFilter(event.target.value)} />
+            </label>
+          </div>
+
+          <div className="records-table-head payable-table-head records-table-head-sticky">
             <span>Durum</span>
             <span>Taraf</span>
             <span>Tarih</span>
             <span>Tutarlar</span>
             <span>İşlem</span>
           </div>
+        </div>
 
-          <div className="vehicles-table-body">
+        <div className="records-table">
+          <div className="records-table-body">
             {filteredItems.map((item) => {
               const isExpanded = expandedIds.includes(item.id);
 
               return (
-                <article key={item.id} className={`vehicles-row debt-row debt-card ${isExpanded ? "expanded" : ""}`}>
+                <article key={item.id} className={`records-row payable-row record-card-shell ${isExpanded ? "expanded" : ""}`}>
                   <button
                     type="button"
-                    className={`debt-mobile-summary ${isExpanded ? "expanded" : ""}`}
+                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
                     onClick={() => toggleExpanded(item.id)}
                     aria-expanded={isExpanded}
                   >
-                    <div className="debt-mobile-summary-main">
+                    <div className="record-mobile-summary-main">
                       <span className={`status-badge ${toStatusClass(item.status)} ${getStatusMarker(item) === "!" ? "status-badge-attention" : ""}`}>
                         {getStatusMarker(item) ? <span className="status-badge-mark">{getStatusMarker(item)}</span> : null}
                         {getReceivablePayableStatusLabel(item.status)}
@@ -289,48 +342,44 @@ export function PayablesPage() {
                       <span>{item.plate || "Araç plakası yok"}</span>
                       <span>{formatDateOnly(item.dueDate)} ({getRemainingDueLabel(item)})</span>
                     </div>
-                    <span className="debt-mobile-summary-icon" aria-hidden="true">
+                    <span className="record-mobile-summary-icon" aria-hidden="true">
                       {isExpanded ? "−" : "+"}
                     </span>
                   </button>
 
-                  <div className="debt-card-body">
-                    <div className="vehicles-cell vehicles-origin">
+                  <div className="records-card-body">
+                    <div className="records-cell records-status">
                       <span className={`status-badge ${toStatusClass(item.status)} ${getStatusMarker(item) === "!" ? "status-badge-attention" : ""}`}>
                         {getStatusMarker(item) ? <span className="status-badge-mark">{getStatusMarker(item)}</span> : null}
                         {getReceivablePayableStatusLabel(item.status)}
                       </span>
                     </div>
 
-                    <div className="vehicles-cell vehicles-main">
+                    <div className="records-cell records-main">
                       <strong>{item.counterpartyName}</strong>
                       <span>{getPaymentMethodLabel(item.paymentMethod)} / {getFinancialDocumentTypeLabel(item.documentType)}</span>
-                      <small>{item.description || "Açıklama girilmemiş."}</small>
+                      <small>{item.plate ? `Plaka: ${item.plate}` : item.description || "Araç plakası yok."}</small>
                     </div>
 
-                    <div className="vehicles-cell vehicles-dates">
-                      <div>
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
                         <span>Kesim</span>
                         <strong>{formatDateOnly(item.issueDate)}</strong>
-                      </div>
-                      <div>
                         <span>Vade</span>
                         <strong>{formatDateOnly(item.dueDate)}</strong>
                       </div>
-                      <div className="due-time-card">
+                      <div className={`finance-stack due-remaining-stack ${getRemainingDueTone(item) ? `due-remaining-${getRemainingDueTone(item)}` : ""}`}>
                         <span>Kalan süre</span>
                         <strong>{getRemainingDueLabel(item)}</strong>
                       </div>
                     </div>
 
-                    <div className="vehicles-cell vehicles-finance">
+                    <div className="records-cell records-finance">
                       <div className="finance-stack">
                         <span>İlk tutar</span>
                         <strong>{formatCurrency(item.originalAmount)}</strong>
                         <span>Kalan</span>
                         <strong className="finance-strong">{formatCurrency(item.remainingAmount)}</strong>
-                      </div>
-                      <div className="finance-stack">
                         <span>Ödenen</span>
                         <div className="finance-inline-value">
                           <strong>{formatCurrency(getPaidAmount(item))}</strong>
@@ -343,7 +392,7 @@ export function PayablesPage() {
                       </div>
                     </div>
 
-                    <div className="vehicles-cell vehicles-actions debt-actions">
+                    <div className="records-cell records-actions">
                       <button
                         type="button"
                         className="action-chip action-chip-success"

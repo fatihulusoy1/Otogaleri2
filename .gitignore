@@ -27,3 +27,6 @@ frontend/dist/
 **/obj/
 ef_output.txt
 build_output.log
+
+# Yuklenen arac fotograflari (object storage / local depolama)
+src/Api/wwwroot/uploads/

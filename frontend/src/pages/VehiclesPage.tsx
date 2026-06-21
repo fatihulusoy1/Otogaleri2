@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
+import { PurchaseFormModal } from "../components/PurchaseFormModal";
+import { StockConsignmentFormModal } from "../components/StockConsignmentFormModal";
+import { BrokeredConsignmentFormModal } from "../components/BrokeredConsignmentFormModal";
+import { VehicleSaleFormModal } from "../components/VehicleSaleFormModal";
+import { StockConsignmentSaleFormModal } from "../components/StockConsignmentSaleFormModal";
+import { VehicleExpenseFormModal } from "../components/VehicleExpenseFormModal";
+import { VehiclePhotoModal } from "../components/VehiclePhotoModal";
+import { VehiclePhotoThumb } from "../components/VehiclePhotoThumb";
+import { PhotoLightbox } from "../components/PhotoLightbox";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate, formatDateOnly, formatPercent, getPaymentMethodLabel, getVehicleStatusLabel } from "../lib/format";
 import { useAuth } from "../state/AuthContext";
-import type { Vehicle, VehicleExpense } from "../types";
+import type { ExpenseCategory, StockConsignment, Vehicle, VehicleExpense, VehicleLookups, VehiclePhoto } from "../types";
+
+type NewRecordModal = "purchase" | "stockConsignment" | "brokeredConsignment";
+
+function getVehicleTitle(vehicle: Vehicle) {
+  return [vehicle.plate, vehicle.segment, vehicle.brand, vehicle.model].filter(Boolean).join(" / ");
+}
 
 function getDateParts(value: string) {
   const date = new Date(value);
@@ -17,6 +32,17 @@ export function VehiclesPage() {
   const { session } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [expenses, setExpenses] = useState<VehicleExpense[]>([]);
+  const [lookups, setLookups] = useState<VehicleLookups>({ segments: [], brands: [], models: [] });
+  const [stockConsignments, setStockConsignments] = useState<StockConsignment[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
+  const [activeNewModal, setActiveNewModal] = useState<NewRecordModal | null>(null);
+  const [saleVehicle, setSaleVehicle] = useState<Vehicle | null>(null);
+  const [saleConsignment, setSaleConsignment] = useState<StockConsignment | null>(null);
+  const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement | null>(null);
   const [showConsignment, setShowConsignment] = useState(false);
   const [selectedPurchaseYear, setSelectedPurchaseYear] = useState("");
   const [selectedPurchaseMonth, setSelectedPurchaseMonth] = useState("");
@@ -24,6 +50,8 @@ export function VehiclesPage() {
   const [selectedSaleMonth, setSelectedSaleMonth] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [activeVehicle, setActiveVehicle] = useState<Vehicle | null>(null);
+  const [photoVehicle, setPhotoVehicle] = useState<Vehicle | null>(null);
+  const [lightboxVehicle, setLightboxVehicle] = useState<Vehicle | null>(null);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,16 +62,136 @@ export function VehiclesPage() {
     }
 
     setLoading(true);
-    Promise.all([api.getVehicles(session.token), api.getExpenses(session.token)])
-      .then(([vehicleData, expenseData]) => {
+    Promise.all([
+      api.getVehicles(session.token),
+      api.getExpenses(session.token),
+      api.getVehicleLookups(session.token),
+      api.getStockConsignments(session.token),
+      api.getExpenseCategories(session.token, 1)
+    ])
+      .then(([vehicleData, expenseData, lookupData, consignmentData, categoryData]) => {
         setVehicles(vehicleData);
         setExpenses(expenseData);
+        setLookups(lookupData);
+        setStockConsignments(consignmentData);
+        setExpenseCategories(categoryData);
       })
       .catch((requestError) =>
         setError(requestError instanceof Error ? requestError.message : "Araç listesi alınamadı.")
       )
       .finally(() => setLoading(false));
   }, [session]);
+
+  useEffect(() => {
+    if (!isNewMenuOpen) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      if (newMenuRef.current && !newMenuRef.current.contains(event.target as Node)) {
+        setIsNewMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isNewMenuOpen]);
+
+  useEffect(() => {
+    if (!openActionsId) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      if (!(event.target as HTMLElement).closest(".row-actions-dropdown")) {
+        setOpenActionsId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openActionsId]);
+
+  async function reloadVehicles() {
+    if (!session) {
+      return;
+    }
+
+    const [vehicleData, expenseData, consignmentData] = await Promise.all([
+      api.getVehicles(session.token),
+      api.getExpenses(session.token),
+      api.getStockConsignments(session.token)
+    ]);
+    setVehicles(vehicleData);
+    setExpenses(expenseData);
+    setStockConsignments(consignmentData);
+  }
+
+  function openNewModal(modal: NewRecordModal) {
+    setIsNewMenuOpen(false);
+    setActiveNewModal(modal);
+  }
+
+  async function handleNewModalSaved() {
+    setActiveNewModal(null);
+    await reloadVehicles();
+  }
+
+  function openSaleModal(vehicle: Vehicle) {
+    setError("");
+
+    if (vehicle.ownershipType === 2) {
+      const consignment = stockConsignments.find((record) => record.id === vehicle.consignmentId);
+      if (!consignment) {
+        setError("Bu konsinye araca ait stok kaydı bulunamadı.");
+        return;
+      }
+      setSaleConsignment(consignment);
+      return;
+    }
+
+    setSaleVehicle(vehicle);
+  }
+
+  async function handleSaleSaved() {
+    setSaleVehicle(null);
+    setSaleConsignment(null);
+    await reloadVehicles();
+  }
+
+  async function handleExpenseSaved() {
+    setExpenseVehicleId(null);
+    await reloadVehicles();
+  }
+
+  function handlePhotosChanged(vehicleId: string, photos: VehiclePhoto[]) {
+    setVehicles((current) =>
+      current.map((vehicle) => (vehicle.id === vehicleId ? { ...vehicle, photos } : vehicle))
+    );
+    setPhotoVehicle((current) => (current && current.id === vehicleId ? { ...current, photos } : current));
+    setLightboxVehicle((current) => (current && current.id === vehicleId ? { ...current, photos } : current));
+  }
+
+  function handlePhotosUploaded(vehicleId: string, created: VehiclePhoto[]) {
+    setVehicles((current) =>
+      current.map((vehicle) =>
+        vehicle.id === vehicleId ? { ...vehicle, photos: [...vehicle.photos, ...created] } : vehicle
+      )
+    );
+  }
+
+  async function handleSetCover(vehicleId: string, photoId: string) {
+    if (!session) {
+      return;
+    }
+
+    try {
+      const photos = await api.setVehiclePhotoCover(session.token, photoId);
+      handlePhotosChanged(vehicleId, photos);
+    } catch (coverError) {
+      setError(coverError instanceof Error ? coverError.message : "Ana ekran resmi ayarlanamadı.");
+    }
+  }
 
   const purchaseYearOptions = useMemo(
     () =>
@@ -147,6 +295,35 @@ export function VehiclesPage() {
         eyebrow="Araçlar"
         title="Tüm araç portföyünüz"
         description="Satıştaki, stoktaki ve servis sürecindeki araçları aynı yapı içinde yönetin."
+        actions={
+          <div className={`new-actions-dropdown ${isNewMenuOpen ? "open" : ""}`} ref={newMenuRef}>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setIsNewMenuOpen((current) => !current)}
+              aria-haspopup="menu"
+              aria-expanded={isNewMenuOpen}
+            >
+              Yeni
+              <span className="new-actions-caret" aria-hidden="true">
+                ▾
+              </span>
+            </button>
+            {isNewMenuOpen ? (
+              <div className="new-actions-menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => openNewModal("purchase")}>
+                  Yeni araç al
+                </button>
+                <button type="button" role="menuitem" onClick={() => openNewModal("brokeredConsignment")}>
+                  Yeni konsinye alım aracılığı
+                </button>
+                <button type="button" role="menuitem" onClick={() => openNewModal("stockConsignment")}>
+                  Yeni konsinye stok ekle
+                </button>
+              </div>
+            ) : null}
+          </div>
+        }
       />
 
       <article className="panel">
@@ -156,7 +333,18 @@ export function VehiclesPage() {
             <p>{loading ? "Araçlar yükleniyor..." : `${filteredVehicles.length} araç görüntüleniyor.`}</p>
           </div>
 
-          <div className="filter-section records-filter-shell">
+          <div className={`filter-section records-filter-shell ${filtersOpen ? "filters-open" : ""}`}>
+            <button
+              type="button"
+              className="filter-toggle ghost-button dark"
+              onClick={() => setFiltersOpen((current) => !current)}
+              aria-expanded={filtersOpen}
+            >
+              Filtreler
+              <span className="new-actions-caret" aria-hidden="true">
+                ▾
+              </span>
+            </button>
             <strong>Tarih filtreleri</strong>
             <div className="filter-bar two-groups vehicles-filter-bar">
               <label>
@@ -251,27 +439,38 @@ export function VehiclesPage() {
 
               return (
                 <article key={vehicle.id} className={`vehicles-row vehicles-card-shell ${isExpanded ? "expanded" : ""}`}>
-                  <button
-                    type="button"
-                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
-                    onClick={() => toggleExpanded(vehicle.id)}
-                    aria-expanded={isExpanded}
-                  >
-                    <div className="record-mobile-summary-main">
-                      <span className={`status-badge ${vehicle.status === 1 ? "status-danger" : vehicle.status === 2 ? "status-success" : "status-neutral"}`}>
-                        {getVehicleStatusLabel(vehicle.status)}
+                  <div className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}>
+                    <VehiclePhotoThumb
+                      vehicle={vehicle}
+                      token={session?.token ?? ""}
+                      small
+                      onView={() => setLightboxVehicle(vehicle)}
+                      onManage={() => setPhotoVehicle(vehicle)}
+                      onUploaded={(created) => handlePhotosUploaded(vehicle.id, created)}
+                      onError={setError}
+                    />
+                    <button
+                      type="button"
+                      className="record-mobile-summary-toggle"
+                      onClick={() => toggleExpanded(vehicle.id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="record-mobile-summary-main">
+                        <span className={`status-badge ${vehicle.status === 1 ? "status-danger" : vehicle.status === 2 ? "status-success" : "status-neutral"}`}>
+                          {getVehicleStatusLabel(vehicle.status)}
+                        </span>
+                        <strong>{vehicle.plate}</strong>
+                        <span>{[vehicle.segment, vehicle.brand, vehicle.model].filter(Boolean).join(" / ")}</span>
+                        <span>
+                          {formatDateOnly(vehicle.purchaseDate)}
+                          {vehicle.saleDate ? ` · ${formatDateOnly(vehicle.saleDate)}` : ""}
+                        </span>
+                      </div>
+                      <span className="record-mobile-summary-icon" aria-hidden="true">
+                        {isExpanded ? "−" : "+"}
                       </span>
-                      <strong>{vehicle.plate}</strong>
-                      <span>{[vehicle.segment, vehicle.brand, vehicle.model].filter(Boolean).join(" / ")}</span>
-                      <span>
-                        {formatDateOnly(vehicle.purchaseDate)}
-                        {vehicle.saleDate ? ` · ${formatDateOnly(vehicle.saleDate)}` : ""}
-                      </span>
-                    </div>
-                    <span className="record-mobile-summary-icon" aria-hidden="true">
-                      {isExpanded ? "−" : "+"}
-                    </span>
-                  </button>
+                    </button>
+                  </div>
 
                   <div className="vehicles-card-body">
                     <div className="vehicles-cell vehicles-origin">
@@ -281,9 +480,19 @@ export function VehiclesPage() {
                     </div>
 
                     <div className="vehicles-cell vehicles-main">
-                      <strong>{vehicle.plate}</strong>
-                      <span>{[vehicle.segment, vehicle.brand, vehicle.model].filter(Boolean).join(" / ")}</span>
-                      <small>{vehicle.description || "Açıklama girilmemiş."}</small>
+                      <VehiclePhotoThumb
+                        vehicle={vehicle}
+                        token={session?.token ?? ""}
+                        onView={() => setLightboxVehicle(vehicle)}
+                        onManage={() => setPhotoVehicle(vehicle)}
+                        onUploaded={(created) => handlePhotosUploaded(vehicle.id, created)}
+                        onError={setError}
+                      />
+                      <div className="vehicles-main-text">
+                        <strong>{vehicle.plate}</strong>
+                        <span>{[vehicle.segment, vehicle.brand, vehicle.model].filter(Boolean).join(" / ")}</span>
+                        <small>{vehicle.description || "Açıklama girilmemiş."}</small>
+                      </div>
                     </div>
 
                     <div className="vehicles-cell vehicles-dates">
@@ -357,11 +566,68 @@ export function VehiclesPage() {
                         {getVehicleStatusLabel(vehicle.status)}
                       </span>
                     </div>
+                  </div>
 
-                    <div className="vehicles-cell vehicles-actions">
-                      <button type="button" className="ghost-button dark" onClick={() => setActiveVehicle(vehicle)}>
-                        Masrafları göster
+                  <div className="vehicles-cell vehicles-actions">
+                    <div className={`row-actions-dropdown ${openActionsId === vehicle.id ? "open" : ""}`}>
+                      <button
+                        type="button"
+                        className="ghost-button dark"
+                        onClick={() => setOpenActionsId((current) => (current === vehicle.id ? null : vehicle.id))}
+                        aria-haspopup="menu"
+                        aria-expanded={openActionsId === vehicle.id}
+                      >
+                        İşlemler
+                        <span className="new-actions-caret" aria-hidden="true">
+                          ▾
+                        </span>
                       </button>
+                      {openActionsId === vehicle.id ? (
+                        <div className="row-actions-menu" role="menu">
+                          {vehicle.status === 1 ? (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setOpenActionsId(null);
+                                openSaleModal(vehicle);
+                              }}
+                            >
+                              Araç sat
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setOpenActionsId(null);
+                              setExpenseVehicleId(vehicle.id);
+                            }}
+                          >
+                            Masraf gir
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setOpenActionsId(null);
+                              setActiveVehicle(vehicle);
+                            }}
+                          >
+                            Masrafları göster
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setOpenActionsId(null);
+                              setPhotoVehicle(vehicle);
+                            }}
+                          >
+                            Fotoğraflar
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </article>
@@ -375,6 +641,82 @@ export function VehiclesPage() {
           </div>
         </div>
       </article>
+
+      {session && activeNewModal === "purchase" ? (
+        <PurchaseFormModal
+          token={session.token}
+          lookups={lookups}
+          onClose={() => setActiveNewModal(null)}
+          onSaved={() => void handleNewModalSaved()}
+        />
+      ) : null}
+
+      {session && activeNewModal === "stockConsignment" ? (
+        <StockConsignmentFormModal
+          token={session.token}
+          lookups={lookups}
+          onClose={() => setActiveNewModal(null)}
+          onSaved={() => void handleNewModalSaved()}
+        />
+      ) : null}
+
+      {session && activeNewModal === "brokeredConsignment" ? (
+        <BrokeredConsignmentFormModal
+          token={session.token}
+          lookups={lookups}
+          onClose={() => setActiveNewModal(null)}
+          onSaved={() => void handleNewModalSaved()}
+        />
+      ) : null}
+
+      {session && saleVehicle ? (
+        <VehicleSaleFormModal
+          token={session.token}
+          vehicle={saleVehicle}
+          onClose={() => setSaleVehicle(null)}
+          onSaved={() => void handleSaleSaved()}
+        />
+      ) : null}
+
+      {session && saleConsignment ? (
+        <StockConsignmentSaleFormModal
+          token={session.token}
+          record={saleConsignment}
+          onClose={() => setSaleConsignment(null)}
+          onSaved={() => void handleSaleSaved()}
+        />
+      ) : null}
+
+      {session && expenseVehicleId ? (
+        <VehicleExpenseFormModal
+          token={session.token}
+          vehicles={vehicles}
+          categories={expenseCategories}
+          initialVehicleId={expenseVehicleId}
+          onClose={() => setExpenseVehicleId(null)}
+          onSaved={() => void handleExpenseSaved()}
+        />
+      ) : null}
+
+      {session && photoVehicle ? (
+        <VehiclePhotoModal
+          token={session.token}
+          vehicleId={photoVehicle.id}
+          vehicleTitle={getVehicleTitle(photoVehicle)}
+          initialPhotos={photoVehicle.photos}
+          onClose={() => setPhotoVehicle(null)}
+          onChanged={(photos) => handlePhotosChanged(photoVehicle.id, photos)}
+        />
+      ) : null}
+
+      {lightboxVehicle && lightboxVehicle.photos.length > 0 ? (
+        <PhotoLightbox
+          photos={lightboxVehicle.photos}
+          title={getVehicleTitle(lightboxVehicle)}
+          onSetCover={(photoId) => handleSetCover(lightboxVehicle.id, photoId)}
+          onClose={() => setLightboxVehicle(null)}
+        />
+      ) : null}
 
       {activeVehicle ? (
         <div className="modal-backdrop" onClick={() => setActiveVehicle(null)}>

@@ -28,7 +28,24 @@ public record VehicleDto(
     decimal? ConsignmentCommissionAmount,
     decimal? EstimatedProfit,
     VehicleStatus Status,
-    string? Description
+    string? Description,
+    IReadOnlyList<VehiclePhotoDto> Photos
+);
+
+public record VehiclePhotoDto(
+    Guid Id,
+    Guid VehicleId,
+    string FileName,
+    string FileUrl,
+    long FileSize,
+    string ContentType,
+    int SortOrder
+);
+
+public record PhotoUploadInput(
+    Stream Content,
+    string FileName,
+    string ContentType
 );
 
 public record PurchaseRecordDto(
@@ -100,7 +117,8 @@ public record VehicleSaleDto(
     int? InstallmentCount,
     int? InstallmentIntervalMonths,
     string? TradePlate,
-    decimal? TradeAmount
+    decimal? TradeAmount,
+    string? NotaryRegistryNumber
 );
 
 public record VehicleExpenseDto(
@@ -211,6 +229,7 @@ public record CompleteVehicleSaleRequest(
     decimal SalePrice,
     DateTime SaleDate,
     PaymentMethod PaymentMethod,
+    string? NotaryRegistryNumber,
     string? CounterpartyName,
     DateTime? DueDate,
     string? DocumentNumber,
@@ -225,6 +244,7 @@ public record UpdateVehicleSaleRequest(
     decimal SalePrice,
     DateTime SaleDate,
     PaymentMethod PaymentMethod,
+    string? NotaryRegistryNumber,
     string? CounterpartyName,
     DateTime? DueDate,
     string? DocumentNumber,

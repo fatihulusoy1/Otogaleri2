@@ -42,6 +42,37 @@ function getRemainingDueLabel(item: ReceivablePayable): string {
   return `${Math.abs(diffDays)} gün geçti`;
 }
 
+function getRemainingDueTone(item: ReceivablePayable): "" | "warning" | "danger" {
+  if (item.status !== 1 && item.status !== 2 && item.status !== 4) {
+    return "";
+  }
+
+  if (!item.dueDate) {
+    return "";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(item.dueDate);
+
+  if (Number.isNaN(due.getTime())) {
+    return "";
+  }
+
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return "danger";
+  }
+
+  if (diffDays <= 7) {
+    return "warning";
+  }
+
+  return "";
+}
+
 function toStatusClass(status: number): string {
   switch (status) {
     case 3:
@@ -249,15 +280,15 @@ export function ReceivablesPage() {
       />
 
       <article className="panel">
-        <div className="debt-sticky-stack">
-          <div className="panel-heading debt-heading">
+        <div className="records-sticky-stack">
+          <div className="panel-heading records-heading">
             <h2>Açık ve kapanan alacaklar</h2>
             <p>{loading ? "Liste hazırlanıyor..." : `${filteredItems.length} kayıt gösteriliyor.`}</p>
           </div>
 
           {error ? <div className="alert error">{error}</div> : null}
 
-          <div className="filter-bar debt-filter-bar">
+          <div className="filter-bar records-filter-bar">
             <label>
               <span>Durum</span>
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -280,7 +311,7 @@ export function ReceivablesPage() {
             </label>
           </div>
 
-          <div className="vehicles-table-head debt-table-head debt-table-head-sticky">
+          <div className="records-table-head receivable-table-head records-table-head-sticky">
             <span>Durum</span>
             <span>Taraf</span>
             <span>Tarih</span>
@@ -289,20 +320,20 @@ export function ReceivablesPage() {
           </div>
         </div>
 
-        <div className="vehicles-table">
-          <div className="vehicles-table-body">
+        <div className="records-table">
+          <div className="records-table-body">
             {filteredItems.map((item) => {
               const isExpanded = expandedIds.includes(item.id);
 
               return (
-                <article key={item.id} className={`vehicles-row debt-row debt-card ${isExpanded ? "expanded" : ""}`}>
+                <article key={item.id} className={`records-row receivable-row record-card-shell ${isExpanded ? "expanded" : ""}`}>
                   <button
                     type="button"
-                    className={`debt-mobile-summary ${isExpanded ? "expanded" : ""}`}
+                    className={`record-mobile-summary ${isExpanded ? "expanded" : ""}`}
                     onClick={() => toggleExpanded(item.id)}
                     aria-expanded={isExpanded}
                   >
-                    <div className="debt-mobile-summary-main">
+                    <div className="record-mobile-summary-main">
                       <span className={`status-badge ${toStatusClass(item.status)} ${getStatusMarker(item) === "!" ? "status-badge-attention" : ""}`}>
                         {getStatusMarker(item) ? <span className="status-badge-mark">{getStatusMarker(item)}</span> : null}
                         {getReceivablePayableStatusLabel(item.status)}
@@ -311,48 +342,44 @@ export function ReceivablesPage() {
                       <span>{item.plate || "Araç plakası yok"}</span>
                       <span>{formatDateOnly(item.dueDate)} ({getRemainingDueLabel(item)})</span>
                     </div>
-                    <span className="debt-mobile-summary-icon" aria-hidden="true">
+                    <span className="record-mobile-summary-icon" aria-hidden="true">
                       {isExpanded ? "−" : "+"}
                     </span>
                   </button>
 
-                  <div className="debt-card-body">
-                    <div className="vehicles-cell vehicles-origin">
+                  <div className="records-card-body">
+                    <div className="records-cell records-status">
                       <span className={`status-badge ${toStatusClass(item.status)} ${getStatusMarker(item) === "!" ? "status-badge-attention" : ""}`}>
                         {getStatusMarker(item) ? <span className="status-badge-mark">{getStatusMarker(item)}</span> : null}
                         {getReceivablePayableStatusLabel(item.status)}
                       </span>
                     </div>
 
-                    <div className="vehicles-cell vehicles-main">
+                    <div className="records-cell records-main">
                       <strong>{item.counterpartyName}</strong>
                       <span>{getPaymentMethodLabel(item.paymentMethod)} / {getFinancialDocumentTypeLabel(item.documentType)}</span>
                       <small>{item.plate ? `Plaka: ${item.plate}` : "Araç plakası yok."}</small>
                     </div>
 
-                    <div className="vehicles-cell vehicles-dates">
-                      <div>
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
                         <span>Kesim</span>
                         <strong>{formatDateOnly(item.issueDate)}</strong>
-                      </div>
-                      <div>
                         <span>Vade</span>
                         <strong>{formatDateOnly(item.dueDate)}</strong>
                       </div>
-                      <div className="due-time-card">
+                      <div className={`finance-stack due-remaining-stack ${getRemainingDueTone(item) ? `due-remaining-${getRemainingDueTone(item)}` : ""}`}>
                         <span>Kalan süre</span>
                         <strong>{getRemainingDueLabel(item)}</strong>
                       </div>
                     </div>
 
-                    <div className="vehicles-cell vehicles-finance">
+                    <div className="records-cell records-finance">
                       <div className="finance-stack">
                         <span>İlk tutar</span>
                         <strong>{formatCurrency(item.originalAmount)}</strong>
                         <span>Kalan</span>
                         <strong className="finance-strong">{formatCurrency(item.remainingAmount)}</strong>
-                      </div>
-                      <div className="finance-stack">
                         <span>Tahsil edilen</span>
                         <div className="finance-inline-value">
                           <strong>{formatCurrency(getCollectedAmount(item))}</strong>
@@ -365,7 +392,7 @@ export function ReceivablesPage() {
                       </div>
                     </div>
 
-                    <div className="vehicles-cell vehicles-actions debt-actions">
+                    <div className="records-cell records-actions">
                       <button
                         type="button"
                         className="action-chip action-chip-success"

@@ -20,3 +20,10 @@ public interface IDateTime
 {
     DateTime Now { get; }
 }
+
+public interface ILoginThrottle
+{
+    void EnsureNotLocked(string email);
+    void RegisterFailure(string email);
+    void Reset(string email);
+}

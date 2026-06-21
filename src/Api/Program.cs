@@ -7,8 +7,12 @@ using AutoGallerySaaS.Application.Features.Consignments.Services;
 using AutoGallerySaaS.Application.Features.Crm.Services;
 using AutoGallerySaaS.Application.Features.Dashboard.Services;
 using AutoGallerySaaS.Application.Features.Finance.Services;
+using AutoGallerySaaS.Application.Features.Subscription.Services;
+using AutoGallerySaaS.Application.Features.TenantActivities.Services;
+using AutoGallerySaaS.Application.Features.TenantUsers.Services;
 using AutoGallerySaaS.Application.Features.Vehicles.Services;
 using AutoGallerySaaS.Infrastructure.Authentication;
+using AutoGallerySaaS.Infrastructure.Imaging;
 using AutoGallerySaaS.Infrastructure.Services;
 using AutoGallerySaaS.Infrastructure.Storage;
 using AutoGallerySaaS.Persistence;
@@ -58,16 +62,24 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddScoped<IDateTime, DateTimeService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IConsignmentService, ConsignmentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IVehiclePhotoService, VehiclePhotoService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<ICrmService, CrmService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<ISubscriptionLimitService, SubscriptionLimitService>();
+builder.Services.AddScoped<ITenantActivityService, TenantActivityService>();
+builder.Services.AddScoped<ITenantUserService, TenantUserService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddSingleton<IImageProcessor, ImageSharpProcessor>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Port=5432;Database=autogallery_db;Username=postgres;Password=postgres";
@@ -76,7 +88,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "super_secret_key_1234567890123456";
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key yapılandırılmamış veya çok kısa (en az 32 karakter olmalı). " +
+        "Üretimde ortam değişkeniyle tanımlayın: Jwt__Key");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "AutoGallerySaaS";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AutoGallerySaaS.Client";
 
@@ -103,6 +121,9 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("is_super_admin", bool.TrueString));
 });
 
+// Statik dosya saglayicisi baslangicta dizinin var olmasini bekler; yuklenen fotograflar buraya yazilir.
+Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads"));
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -112,6 +133,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
+// Yuklenen fotograflari /uploads altindan public olarak servis et (auth gerektirmez, link uzerinden erisilir).
+app.UseStaticFiles();
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
@@ -125,6 +148,7 @@ app.Use(async (context, next) =>
 
     await next();
 });
+app.UseMiddleware<SubscriptionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

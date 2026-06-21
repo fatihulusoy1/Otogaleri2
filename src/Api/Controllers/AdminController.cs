@@ -1,6 +1,7 @@
 using AutoGallerySaaS.Application.Features.Admin.Dtos;
 using AutoGallerySaaS.Application.Features.Admin.Services;
 using AutoGallerySaaS.Application.Features.Finance.Dtos;
+using AutoGallerySaaS.Application.Features.TenantActivities.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,10 +26,86 @@ public class AdminController : ControllerBase
         return Ok(await _adminService.GetTenantsAsync());
     }
 
+    [HttpGet("subscription-plans")]
+    public async Task<ActionResult<List<AdminSubscriptionPlanDto>>> GetSubscriptionPlans()
+    {
+        return Ok(await _adminService.GetSubscriptionPlansAsync());
+    }
+
+    [HttpPost("subscription-plans")]
+    public async Task<ActionResult<AdminSubscriptionPlanDto>> CreatePlan(CreatePlanRequest request)
+    {
+        return Ok(await _adminService.CreatePlanAsync(request));
+    }
+
+    [HttpPut("subscription-plans/{id}")]
+    public async Task<ActionResult<AdminSubscriptionPlanDto>> UpdatePlan(Guid id, UpdatePlanRequest request)
+    {
+        return Ok(await _adminService.UpdatePlanAsync(id, request));
+    }
+
+    [HttpDelete("subscription-plans/{id}")]
+    public async Task<IActionResult> DeletePlan(Guid id)
+    {
+        await _adminService.DeletePlanAsync(id);
+        return NoContent();
+    }
+
     [HttpGet("users")]
     public async Task<ActionResult<List<AdminUserDto>>> GetUsers([FromQuery] Guid? tenantId)
     {
         return Ok(await _adminService.GetUsersAsync(tenantId));
+    }
+
+    [HttpPost("tenants")]
+    public async Task<ActionResult<AdminTenantDto>> CreateTenant(CreateTenantRequest request)
+    {
+        return Ok(await _adminService.CreateTenantAsync(request));
+    }
+
+    [HttpPut("tenants/{id}")]
+    public async Task<ActionResult<AdminTenantDto>> UpdateTenant(Guid id, UpdateTenantRequest request)
+    {
+        return Ok(await _adminService.UpdateTenantAsync(id, request));
+    }
+
+    [HttpDelete("tenants/{id}")]
+    public async Task<IActionResult> DeleteTenant(Guid id)
+    {
+        await _adminService.DeleteTenantAsync(id);
+        return NoContent();
+    }
+
+    [HttpGet("tenants/{id}/activities")]
+    public async Task<ActionResult<List<TenantActivityDto>>> GetTenantActivities(Guid id)
+    {
+        return Ok(await _adminService.GetTenantActivitiesAsync(id));
+    }
+
+    [HttpPost("users")]
+    public async Task<ActionResult<AdminUserDto>> CreateUser(CreateUserRequest request)
+    {
+        return Ok(await _adminService.CreateUserAsync(request));
+    }
+
+    [HttpPut("users/{id}")]
+    public async Task<ActionResult<AdminUserDto>> UpdateUser(Guid id, UpdateUserRequest request)
+    {
+        return Ok(await _adminService.UpdateUserAsync(id, request));
+    }
+
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        await _adminService.DeleteUserAsync(id);
+        return NoContent();
+    }
+
+    [HttpPost("users/{id}/password")]
+    public async Task<IActionResult> SetUserPassword(Guid id, SetUserPasswordRequest request)
+    {
+        await _adminService.SetUserPasswordAsync(id, request);
+        return NoContent();
     }
 
     [HttpPatch("tenants/{id}/status")]

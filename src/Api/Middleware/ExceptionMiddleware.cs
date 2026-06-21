@@ -30,12 +30,19 @@ public class ExceptionMiddleware
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = ex switch
             {
+                SubscriptionLimitException => (int)HttpStatusCode.Conflict,
                 BusinessRuleException => (int)HttpStatusCode.Conflict,
                 _ => (int)HttpStatusCode.InternalServerError
             };
 
             var response = ex switch
             {
+                SubscriptionLimitException => new ProblemDetails
+                {
+                    Status = context.Response.StatusCode,
+                    Title = ex.Message,
+                    Extensions = { ["code"] = "limit_exceeded" }
+                },
                 BusinessRuleException => new ProblemDetails
                 {
                     Status = context.Response.StatusCode,

@@ -1,6 +1,7 @@
 using AutoGallerySaaS.Application.Common;
 using AutoGallerySaaS.Application.Common.Exceptions;
 using AutoGallerySaaS.Application.Common.Interfaces;
+using AutoGallerySaaS.Application.Features.Subscription.Services;
 using AutoGallerySaaS.Application.Features.Vehicles.Dtos;
 using AutoGallerySaaS.Domain.Entities.Finance;
 using AutoGallerySaaS.Domain.Entities.Vehicles;
@@ -11,11 +12,15 @@ namespace AutoGallerySaaS.Application.Features.Vehicles.Services;
 public class VehicleService : IVehicleService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ISubscriptionLimitService _limit;
     private static readonly Guid SharedLookupTenantId = SharedTenantIds.Catalog;
 
-    public VehicleService(IApplicationDbContext context)
+    public VehicleService(IApplicationDbContext context, ICurrentUserService currentUser, ISubscriptionLimitService limit)
     {
         _context = context;
+        _currentUser = currentUser;
+        _limit = limit;
     }
 
     public async Task<VehicleLookupsDto> GetLookupsAsync()
@@ -56,9 +61,11 @@ public class VehicleService : IVehicleService
             .OrderByDescending(vehicle => vehicle.CreatedAt)
             .ToListAsync();
 
-        var expenseLookup = await GetVehicleExpenseLookupAsync(vehicles.Select(vehicle => vehicle.Id).ToList());
+        var vehicleIds = vehicles.Select(vehicle => vehicle.Id).ToList();
+        var expenseLookup = await GetVehicleExpenseLookupAsync(vehicleIds);
         var consignmentCommissionLookup = await GetConsignmentCommissionLookupAsync(vehicles);
-        return vehicles.Select(vehicle => MapVehicle(vehicle, expenseLookup, consignmentCommissionLookup)).ToList();
+        var photoLookup = await GetVehiclePhotoLookupAsync(vehicleIds);
+        return vehicles.Select(vehicle => MapVehicle(vehicle, expenseLookup, consignmentCommissionLookup, photoLookup)).ToList();
     }
 
     public async Task<VehicleDto?> GetByIdAsync(Guid id)
@@ -71,7 +78,8 @@ public class VehicleService : IVehicleService
 
         var expenseLookup = await GetVehicleExpenseLookupAsync(new List<Guid> { vehicle.Id });
         var consignmentCommissionLookup = await GetConsignmentCommissionLookupAsync(new List<Vehicle> { vehicle });
-        return MapVehicle(vehicle, expenseLookup, consignmentCommissionLookup);
+        var photoLookup = await GetVehiclePhotoLookupAsync(new List<Guid> { vehicle.Id });
+        return MapVehicle(vehicle, expenseLookup, consignmentCommissionLookup, photoLookup);
     }
 
     public async Task<VehicleDto> CreateAsync(CreateVehicleRequest request)
@@ -93,7 +101,8 @@ public class VehicleService : IVehicleService
         return MapVehicle(
             vehicle,
             new Dictionary<Guid, decimal> { [vehicle.Id] = 0m },
-            new Dictionary<Guid, decimal?>());
+            new Dictionary<Guid, decimal?>(),
+            new Dictionary<Guid, List<VehiclePhotoDto>>());
     }
 
     public async Task<PurchaseRecordDto> CreatePurchaseAsync(CreatePurchaseRequest request)
@@ -143,6 +152,13 @@ public class VehicleService : IVehicleService
         string? description)
     {
         ValidateVehicleRequest(plate, segmentId, brandId, modelId, purchasePrice);
+
+        // Araç ekleme paket limitiyle sınırlıdır (super admin muaftır).
+        if (!_currentUser.IsSuperAdmin && _currentUser.TenantId is Guid tenantId)
+        {
+            await _limit.EnsureCanAddVehicleAsync(tenantId);
+        }
+
         var catalog = await ResolveCatalogAsync(segmentId, brandId, modelId);
 
         var vehicle = new Vehicle
@@ -502,6 +518,7 @@ public class VehicleService : IVehicleService
         vehicle.Status = VehicleStatus.Sold;
         vehicle.ActualSalePrice = request.SalePrice;
         vehicle.SaleDate = request.SaleDate;
+        vehicle.SaleNotaryRegistryNumber = NormalizeOptionalText(request.NotaryRegistryNumber);
         ValidateTradeSelection(request.PaymentMethod, request.TradePlate, request.TradeAmount);
         vehicle.SaleTradePlate = request.PaymentMethod == PaymentMethod.Trade
             ? NormalizeOptionalText(request.TradePlate)
@@ -552,7 +569,8 @@ public class VehicleService : IVehicleService
             null,
             null,
             vehicle.SaleTradePlate,
-            vehicle.SaleTradeAmount);
+            vehicle.SaleTradeAmount,
+            vehicle.SaleNotaryRegistryNumber);
     }
 
     public async Task<VehicleSaleDto> UpdateSaleAsync(Guid vehicleId, UpdateVehicleSaleRequest request)
@@ -582,6 +600,7 @@ public class VehicleService : IVehicleService
 
         vehicle.ActualSalePrice = request.SalePrice;
         vehicle.SaleDate = request.SaleDate;
+        vehicle.SaleNotaryRegistryNumber = NormalizeOptionalText(request.NotaryRegistryNumber);
         ValidateTradeSelection(request.PaymentMethod, request.TradePlate, request.TradeAmount);
         vehicle.SaleTradePlate = request.PaymentMethod == PaymentMethod.Trade
             ? NormalizeOptionalText(request.TradePlate)
@@ -634,7 +653,8 @@ public class VehicleService : IVehicleService
             null,
             null,
             vehicle.SaleTradePlate,
-            vehicle.SaleTradeAmount);
+            vehicle.SaleTradeAmount,
+            vehicle.SaleNotaryRegistryNumber);
     }
 
     public async Task<List<VehicleSaleDto>> GetSalesAsync()
@@ -682,7 +702,8 @@ public class VehicleService : IVehicleService
                     null,
                     null,
                     vehicle.SaleTradePlate,
-                    vehicle.SaleTradeAmount);
+                    vehicle.SaleTradeAmount,
+                    vehicle.SaleNotaryRegistryNumber);
             })
             .ToList();
     }
@@ -790,7 +811,8 @@ public class VehicleService : IVehicleService
     private static VehicleDto MapVehicle(
         Vehicle vehicle,
         IReadOnlyDictionary<Guid, decimal> expenseLookup,
-        IReadOnlyDictionary<Guid, decimal?> consignmentCommissionLookup)
+        IReadOnlyDictionary<Guid, decimal?> consignmentCommissionLookup,
+        IReadOnlyDictionary<Guid, List<VehiclePhotoDto>> photoLookup)
     {
         var totalExpenseCost = expenseLookup.GetValueOrDefault(vehicle.Id);
         var totalCost = vehicle.PurchasePrice + totalExpenseCost;
@@ -824,7 +846,34 @@ public class VehicleService : IVehicleService
             consignmentCommissionAmount,
             estimatedProfit,
             vehicle.Status,
-            vehicle.Description);
+            vehicle.Description,
+            photoLookup.GetValueOrDefault(vehicle.Id) ?? new List<VehiclePhotoDto>());
+    }
+
+    private async Task<Dictionary<Guid, List<VehiclePhotoDto>>> GetVehiclePhotoLookupAsync(List<Guid> vehicleIds)
+    {
+        if (vehicleIds.Count == 0)
+        {
+            return new Dictionary<Guid, List<VehiclePhotoDto>>();
+        }
+
+        var photos = await _context.VehiclePhotos
+            .Where(photo => vehicleIds.Contains(photo.VehicleId))
+            .OrderBy(photo => photo.SortOrder)
+            .ThenBy(photo => photo.CreatedAt)
+            .Select(photo => new VehiclePhotoDto(
+                photo.Id,
+                photo.VehicleId,
+                photo.FileName,
+                photo.FileUrl,
+                photo.FileSize,
+                photo.ContentType,
+                photo.SortOrder))
+            .ToListAsync();
+
+        return photos
+            .GroupBy(photo => photo.VehicleId)
+            .ToDictionary(group => group.Key, group => group.ToList());
     }
 
     private static PurchaseRecordDto MapPurchaseRecord(Vehicle vehicle, ReceivablePayable? financeItem)

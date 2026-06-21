@@ -6,6 +6,37 @@ export interface AuthResponse {
   tenantName: string;
   userFullName: string;
   isSuperAdmin: boolean;
+  subscriptionEndDate: string;
+  subscriptionExpired: boolean;
+  isTenantAdmin: boolean;
+  requiresTwoFactor: boolean;
+}
+
+export interface TenantUser {
+  id: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isActive: boolean;
+  isTenantAdmin: boolean;
+  isSuperAdmin: boolean;
+  lastLoginAt: string | null;
+}
+
+export interface CreateTenantUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  isTenantAdmin: boolean;
+}
+
+export interface UpdateTenantUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  isTenantAdmin: boolean;
 }
 
 export interface LoginRequest {
@@ -13,10 +44,66 @@ export interface LoginRequest {
   password: string;
 }
 
+export type BillingCycle = 1 | 2;
+
 export interface RegisterRequest extends LoginRequest {
   firstName: string;
   lastName: string;
   tenantName: string;
+  subscriptionPlanId: string;
+  billingCycle: BillingCycle;
+}
+
+export interface SubscriptionPlanPublic {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+}
+
+export interface Profile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  tenantId: string;
+  tenantName: string;
+  isSuperAdmin: boolean;
+  roleLabel: string;
+  createdAt: string;
+  subscriptionEndDate: string;
+  subscriptionExpired: boolean;
+  lastLoginAt: string | null;
+  twoFactorEnabled: boolean;
+}
+
+export interface UpdateProfileRequest {
+  firstName: string;
+  lastName: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface SubscriptionStatus {
+  tenantId: string;
+  tenantName: string;
+  planId: string;
+  planName: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+  currentUsers: number;
+  currentVehicles: number;
+  subscriptionEndDate: string;
+  daysRemaining: number;
+  isExpired: boolean;
 }
 
 export interface DashboardSummary {
@@ -74,6 +161,17 @@ export interface Vehicle {
   estimatedProfit: number | null;
   status: VehicleStatus;
   description: string | null;
+  photos: VehiclePhoto[];
+}
+
+export interface VehiclePhoto {
+  id: string;
+  vehicleId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  contentType: string;
+  sortOrder: number;
 }
 
 export interface PurchaseRecord {
@@ -146,6 +244,7 @@ export interface VehicleSale {
   installmentIntervalMonths: number | null;
   tradePlate: string | null;
   tradeAmount: number | null;
+  notaryRegistryNumber: string | null;
 }
 
 export interface VehicleExpense {
@@ -200,6 +299,7 @@ export interface CompleteVehicleSaleRequest {
   salePrice: number;
   saleDate: string;
   paymentMethod: PaymentMethod;
+  notaryRegistryNumber: string | null;
   counterpartyName: string | null;
   dueDate: string | null;
   documentNumber: string | null;
@@ -256,6 +356,40 @@ export interface AdminTenant {
   identifier: string | null;
   isActive: boolean;
   userCount: number;
+  subscriptionPlanId: string;
+  subscriptionPlanName: string;
+  subscriptionEndDate: string;
+}
+
+export interface AdminSubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+  isActive: boolean;
+}
+
+export interface PlanRequest {
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  maxUsers: number;
+  maxVehicles: number;
+  isActive: boolean;
+}
+
+export interface TenantActivity {
+  id: string;
+  type: number;
+  typeLabel: string;
+  description: string;
+  amount: number | null;
+  performedBy: string | null;
+  createdAt: string;
 }
 
 export interface AdminUser {
@@ -263,6 +397,43 @@ export interface AdminUser {
   tenantId: string;
   tenantName: string;
   fullName: string;
+  email: string;
+  isActive: boolean;
+  isSuperAdmin: boolean;
+  lastLoginAt: string | null;
+}
+
+export interface CreateTenantRequest {
+  name: string;
+  identifier: string | null;
+  subscriptionPlanId: string;
+  subscriptionEndDate: string;
+  adminFirstName: string;
+  adminLastName: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+export interface UpdateTenantRequest {
+  name: string;
+  identifier: string | null;
+  subscriptionPlanId: string;
+  subscriptionEndDate: string;
+  isActive: boolean;
+}
+
+export interface CreateUserRequest {
+  tenantId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  isSuperAdmin: boolean;
+}
+
+export interface UpdateUserRequest {
+  firstName: string;
+  lastName: string;
   email: string;
   isActive: boolean;
   isSuperAdmin: boolean;

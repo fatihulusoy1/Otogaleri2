@@ -260,11 +260,14 @@ export function VehicleExpensesPage() {
                     <div className="records-cell records-main">
                       <strong>{expense.vehiclePlate}</strong>
                       <span>{expense.description}</span>
+                      <small>Araca bağlı gider</small>
                     </div>
 
-                    <div className="records-cell records-main">
-                      <strong>{expense.categoryName ?? "Kategorisiz"}</strong>
-                      <small>Araca bağlı gider</small>
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Kategori</span>
+                        <strong>{expense.categoryName ?? "Kategorisiz"}</strong>
+                      </div>
                     </div>
 
                     <div className="records-cell records-finance">
@@ -276,8 +279,11 @@ export function VehicleExpensesPage() {
                       </div>
                     </div>
 
-                    <div className="records-cell records-main">
-                      <strong>{getPaymentMethodLabel(expense.paymentMethod)}</strong>
+                    <div className="records-cell records-finance">
+                      <div className="finance-stack">
+                        <span>Ödeme metodu</span>
+                        <strong>{getPaymentMethodLabel(expense.paymentMethod)}</strong>
+                      </div>
                     </div>
 
                     <div className="records-cell records-actions">
